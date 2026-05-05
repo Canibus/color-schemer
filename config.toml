@@ -1,0 +1,57 @@
+show_notifications = false
+start_minimized = false
+
+[hotkeys]
+next_profile = "Ctrl+Shift+E"
+prev_profile = "Ctrl+Shift+Q"
+reset = "Ctrl+Shift+W"
+
+[[profiles]]
+name = "Default"
+description = "Стандартные настройки"
+
+[profiles.settings]
+brightness = 1.0
+contrast = 1.0
+gamma = 1.0
+digital_vibrance = 0
+
+[[profiles]]
+name = "Gaming"
+description = "Игровой профиль - повышенная яркость и насыщенность"
+
+[profiles.settings]
+brightness = 1.1
+contrast = 1.15
+gamma = 0.95
+digital_vibrance = 63
+
+[[profiles]]
+name = "Movie"
+description = "Для просмотра фильмов"
+
+[profiles.settings]
+brightness = 0.95
+contrast = 1.1
+gamma = 1.1
+digital_vibrance = 20
+
+[[profiles]]
+name = "Night"
+description = "Ночной режим - сниженная яркость"
+
+[profiles.settings]
+brightness = 0.7
+contrast = 0.9
+gamma = 1.2
+digital_vibrance = 0
+
+[[profiles]]
+name = "Vibrant"
+description = "Максимальная насыщенность цветов"
+
+[profiles.settings]
+brightness = 1.0
+contrast = 1.2
+gamma = 0.9
+digital_vibrance = 100

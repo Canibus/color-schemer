@@ -1,0 +1,39 @@
+[package]
+name = "color-schemer"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+# NVAPI bindings
+nvapi = "0.1"
+# Или используем raw FFI к nvapi64.dll
+libloading = "0.8"
+
+# Горячие клавиши
+global-hotkey = "0.6"
+
+# Системный трей
+tray-icon = "0.19"
+
+# Конфигурация
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
+
+# Логирование
+log = "0.4"
+env_logger = "0.11"
+
+# Уведомления
+winrt-notification = "0.5"
+
+crossbeam-channel = "0.5"
+
+# Windows API
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.59", features = [
+    "Win32_Graphics_Gdi",
+] }
+
+[build-dependencies]
+cc = "1"
