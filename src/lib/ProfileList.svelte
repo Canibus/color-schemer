@@ -47,7 +47,11 @@
     overflow: hidden;
     transition: all 0.2s ease-out;
     padding: 10px;
-    border-radius: 4px;
+    border-radius: 8px;
+  }
+
+  .profile-row:hover {
+    border-color: var(--text-muted);
   }
 
   .profile-row.selected {
@@ -61,7 +65,7 @@
     left: 0; top: 0; bottom: 0;
     width: 4px;
     background: var(--primary);
-    box-shadow: 2px 0 10px var(--primary);
+    box-shadow: 2px 0 10px var(--primary-glow);
   }
 
   .apply-btn { 
@@ -91,7 +95,7 @@
     border: 1px solid var(--border);
     color: var(--text-main);
     cursor: pointer;
-    border-radius: 2px;
+    border-radius: 8px;
     font-size: 12px;
     transition: all 0.2s ease;
     align-self: center;
@@ -107,7 +111,7 @@
     padding: 10px 15px;
     background: var(--bg-surface);
     border: 1px dashed var(--border);
-    border-radius: 4px;
+    border-radius: 8px;
     color: var(--text-muted);
     cursor: pointer;
     width: 100%;
@@ -125,6 +129,6 @@
     padding: 20px;
     color: var(--text-muted);
     border: 1px dashed var(--border);
-    border-radius: 4px;
+    border-radius: 8px;
   }
 </style>
