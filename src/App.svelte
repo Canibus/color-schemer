@@ -1,19 +1,20 @@
 <!-- src/App.svelte -->
 <script lang="ts">
   import { onMount } from "svelte";
+  import "./theme.css";
   import { invoke } from "@tauri-apps/api/tauri";
   import type { DisplayProfile, AppConfig } from "./lib/types";
   import ProfileList from "./lib/ProfileList.svelte";
   import ProfileEditor from "./lib/ProfileEditor.svelte";
   import SettingsTab from "./lib/SettingsTab.svelte";
 
-  let profiles: DisplayProfile[] = [];
-  let activeIndex: number | null = null;
-  let config: AppConfig | null = null;
+  let profiles = $state<DisplayProfile[]>([]);
+  let activeIndex = $state<number | null>(null);
+  let config = $state<AppConfig | null>(null);
   
-  let activeTab: 'profiles' | 'settings' = 'profiles';
-  let editingIndex: number | null = null;
-  let status = "Loading…";
+  let activeTab = $state<'profiles' | 'settings'>('profiles');
+  let editingIndex = $state<number | null>(null);
+  let status = $state("Loading…");
 
   async function loadState() {
     status = "Loading state...";
@@ -126,8 +127,8 @@
   </header>
 
   <nav class="tabs">
-      <button class:active={activeTab === 'profiles'} on:click={() => { activeTab = 'profiles'; editingIndex = null; }}>Profiles</button>
-      <button class:active={activeTab === 'settings'} on:click={() => activeTab = 'settings'}>Settings</button>
+      <button class:active={activeTab === 'profiles'} onclick={() => { activeTab = 'profiles'; editingIndex = null; }}>Profiles</button>
+      <button class:active={activeTab === 'settings'} onclick={() => activeTab = 'settings'}>Settings</button>
   </nav>
 
   <div class="content">
@@ -175,8 +176,6 @@
     margin: 0;
     font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial,
       sans-serif;
-    background: #0b0d10;
-    color: #e8eef6;
   }
 
   .container {
