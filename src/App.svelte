@@ -122,7 +122,10 @@
 
 <main class="container">
   <header class="header">
-    <h1>color-schemer</h1>
+    <div class="brand">
+      <img src="/icon.svg" alt="" class="logo" />
+      <h1>color-schemer</h1>
+    </div>
     <div class="status">{status}</div>
   </header>
 
@@ -174,21 +177,32 @@
   }
   :global(body) {
     margin: 0;
-    font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial,
-      sans-serif;
+    font-family: var(--font-sans);
   }
 
   .container {
     padding: 18px;
     display: grid;
     gap: 14px;
+    user-select: none;
   }
 
   .header {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     justify-content: space-between;
     gap: 12px;
+    padding-bottom: 5px;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .logo {
+    width: 24px;
+    height: 24px;
+    filter: drop-shadow(0 0 5px var(--primary-glow));
   }
   h1 {
     margin: 0;
@@ -196,10 +210,14 @@
     color: var(--primary);
     text-transform: uppercase;
     letter-spacing: 1px;
+    font-family: var(--font-mono);
   }
   .status {
-    font-size: 12px;
-    opacity: 0.85;
+    font-size: 11px;
+    color: var(--primary);
+    opacity: 0.8;
+    font-family: var(--font-mono);
+    text-transform: uppercase;
   }
 
   /* Basic tab styling */
@@ -213,6 +231,11 @@
     border-radius: 8px;
     cursor: pointer;
     transition: all 0.2s ease-out;
+    text-align: center;
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    font-size: 12px;
+    letter-spacing: 1px;
   }
   .tabs button.active {
     color: var(--primary);
@@ -223,17 +246,19 @@
 
   button {
     appearance: none;
-    border: 1px solid #2a3440;
-    background: #121821;
+    border: 1px solid var(--border);
+    background: var(--bg-layer);
     color: inherit;
     padding: 10px 12px;
     border-radius: 10px;
     cursor: pointer;
     text-align: left;
+    transition: all 0.15s ease-out;
+    font-family: var(--font-sans);
   }
   button:hover:enabled {
-    border-color: #3a4b5d;
-    background: #141c26;
+    border-color: var(--primary);
+    background: var(--bg-active);
   }
   button:disabled {
     opacity: 0.55;

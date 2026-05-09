@@ -46,7 +46,7 @@ fn test_single_profile() {
 
 #[test]
 fn test_next_cycles_through_all() {
-    let pm = ProfileManager::new(make_profiles(3));
+    let mut pm = ProfileManager::new(make_profiles(3));
 
     assert_eq!(pm.current_index(), 0);
 
@@ -62,7 +62,7 @@ fn test_next_cycles_through_all() {
 
 #[test]
 fn test_next_returns_correct_profile() {
-    let pm = ProfileManager::new(make_profiles(3));
+    let mut pm = ProfileManager::new(make_profiles(3));
 
     let p = pm.next_profile();
     assert_eq!(p.name, "Profile 1");
@@ -73,7 +73,7 @@ fn test_next_returns_correct_profile() {
 
 #[test]
 fn test_next_single_profile_stays() {
-    let pm = ProfileManager::new(make_profiles(1));
+    let mut pm = ProfileManager::new(make_profiles(1));
 
     pm.next_profile();
     assert_eq!(pm.current_index(), 0);
@@ -88,7 +88,7 @@ fn test_next_single_profile_stays() {
 
 #[test]
 fn test_prev_wraps_to_last() {
-    let pm = ProfileManager::new(make_profiles(3));
+    let mut pm = ProfileManager::new(make_profiles(3));
 
     let p = pm.prev_profile();
     assert_eq!(p.name, "Profile 2");
@@ -97,7 +97,7 @@ fn test_prev_wraps_to_last() {
 
 #[test]
 fn test_prev_cycles_backward() {
-    let pm = ProfileManager::new(make_profiles(3));
+    let mut pm = ProfileManager::new(make_profiles(3));
 
     pm.prev_profile(); // 0 → 2
     pm.prev_profile(); // 2 → 1
@@ -112,7 +112,7 @@ fn test_prev_cycles_backward() {
 
 #[test]
 fn test_set_profile_valid() {
-    let pm = ProfileManager::new(make_profiles(3));
+    let mut pm = ProfileManager::new(make_profiles(3));
 
     let result = pm.set_profile(2);
     assert!(result.is_some());
@@ -122,7 +122,7 @@ fn test_set_profile_valid() {
 
 #[test]
 fn test_set_profile_invalid() {
-    let pm = ProfileManager::new(make_profiles(3));
+    let mut pm = ProfileManager::new(make_profiles(3));
 
     assert!(pm.set_profile(99).is_none());
     assert_eq!(pm.current_index(), 0); // не изменился
@@ -130,7 +130,7 @@ fn test_set_profile_invalid() {
 
 #[test]
 fn test_set_profile_boundary() {
-    let pm = ProfileManager::new(make_profiles(3));
+    let mut pm = ProfileManager::new(make_profiles(3));
 
     assert!(pm.set_profile(0).is_some());
     assert!(pm.set_profile(2).is_some());
@@ -193,7 +193,7 @@ fn test_remove_invalid_index() {
 
 #[test]
 fn test_full_cycle_forward() {
-    let pm = ProfileManager::new(make_profiles(4));
+    let mut pm = ProfileManager::new(make_profiles(4));
 
     let names: Vec<String> = (0..8).map(|_| pm.next_profile().name.clone()).collect();
 
@@ -214,7 +214,7 @@ fn test_full_cycle_forward() {
 
 #[test]
 fn test_forward_backward_consistency() {
-    let pm = ProfileManager::new(make_profiles(5));
+    let mut pm = ProfileManager::new(make_profiles(5));
 
     pm.next_profile(); // → 1
     pm.next_profile(); // → 2

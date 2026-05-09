@@ -32,7 +32,7 @@ fn test_profiles() -> Vec<DisplayProfile> {
 #[test]
 fn test_switch_applies_correct_settings() {
     let gpu = MockGpuController::new();
-    let pm = ProfileManager::new(test_profiles());
+    let mut pm = ProfileManager::new(test_profiles());
 
     // Начальный профиль
     gpu.apply_display_settings(&pm.current_profile().settings)
@@ -54,7 +54,7 @@ fn test_switch_applies_correct_settings() {
 #[test]
 fn test_full_cycle_count() {
     let gpu = MockGpuController::new();
-    let pm = ProfileManager::new(test_profiles());
+    let mut pm = ProfileManager::new(test_profiles());
 
     for _ in 0..pm.count() {
         let p = pm.next_profile();
@@ -67,7 +67,7 @@ fn test_full_cycle_count() {
 #[test]
 fn test_reset_to_default() {
     let gpu = MockGpuController::new();
-    let pm = ProfileManager::new(test_profiles());
+    let mut pm = ProfileManager::new(test_profiles());
 
     // Переключаемся на Gaming
     pm.next_profile();
@@ -84,7 +84,7 @@ fn test_reset_to_default() {
 #[test]
 fn test_gpu_failure_does_not_affect_profile_state() {
     let gpu = MockGpuController::new();
-    let pm = ProfileManager::new(test_profiles());
+    let mut pm = ProfileManager::new(test_profiles());
 
     gpu.set_should_fail(true);
 
@@ -99,7 +99,7 @@ fn test_gpu_failure_does_not_affect_profile_state() {
 #[test]
 fn test_rapid_switching() {
     let gpu = MockGpuController::new();
-    let pm = ProfileManager::new(test_profiles());
+    let mut pm = ProfileManager::new(test_profiles());
 
     for _ in 0..100 {
         let p = pm.next_profile();
@@ -123,7 +123,7 @@ fn test_concurrent_access() {
             std::thread::spawn(move || {
                 for _ in 0..10 {
                     let settings = {
-                        let pm = pm.lock().unwrap();
+                        let mut pm = pm.lock().unwrap();
                         let p = pm.next_profile();
                         p.settings.clone()
                     };

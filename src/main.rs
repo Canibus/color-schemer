@@ -19,7 +19,7 @@ fn handle_action(
     profile_manager: &Arc<Mutex<ProfileManager>>,
     show_notifications: bool,
 ) {
-    let pm = lock_profile_manager(profile_manager);
+    let mut pm = lock_profile_manager(profile_manager);
 
     let (profile_name, settings) = match action {
         HotkeyAction::NextProfile => {
@@ -81,7 +81,7 @@ fn handle_menu_event(
         }
         other if other.starts_with("profile_") => {
             if let Ok(index) = other.trim_start_matches("profile_").parse::<usize>() {
-                let pm_lock = lock_profile_manager(pm);
+                let mut pm_lock = lock_profile_manager(pm);
                 if let Some(profile) = pm_lock.set_profile(index) {
                     let name = profile.name.clone();
                     let settings = profile.settings.clone();
@@ -190,7 +190,7 @@ fn main() {
     info!("Ctrl+Shift+F7 — сброс");
 
     // =========================================================
-    // Единый цикл: свой message pump вместо tao event loop
+    // Единый цикл: блокирующее ожидание сообщений
     // =========================================================
     let mut last_trigger = Instant::now();
     let cooldown = Duration::from_millis(300);
@@ -200,7 +200,7 @@ fn main() {
         platform::windows::pump_messages();
 
         // 2. Обработка горячих клавиш
-        if let Ok(event) = GlobalHotKeyEvent::receiver().try_recv() {
+        while let Ok(event) = GlobalHotKeyEvent::receiver().try_recv() {
             let now = Instant::now();
 
             if event.state() == HotKeyState::Pressed && now.duration_since(last_trigger) > cooldown
@@ -213,16 +213,20 @@ fn main() {
         }
 
         // 3. Обработка событий меню трея
-        if let Ok(event) = MenuEvent::receiver().try_recv() {
+        let mut should_quit = false;
+        while let Ok(event) = MenuEvent::receiver().try_recv() {
             let id = event.id().0.as_str();
-            let should_quit = handle_menu_event(id, &nvidia, &profile_manager, show_notif);
-            if should_quit {
+            if handle_menu_event(id, &nvidia, &profile_manager, show_notif) {
+                should_quit = true;
                 break;
             }
         }
+        if should_quit {
+            break;
+        }
 
-        // 4. Небольшая пауза чтобы не грузить CPU
-        std::thread::sleep(Duration::from_millis(10));
+        // 4. Ждём следующее сообщение (0% CPU в простое)
+        platform::windows::wait_message();
     }
 
     info!("Приложение завершено");

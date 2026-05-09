@@ -1,7 +1,6 @@
 use crate::nvidia::DisplaySettings;
 use log::info;
 use serde::{Deserialize, Serialize};
-use std::sync::atomic::{AtomicUsize, Ordering};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DisplayProfile {
@@ -22,7 +21,7 @@ impl DisplayProfile {
 
 pub struct ProfileManager {
     profiles: Vec<DisplayProfile>,
-    current_index: AtomicUsize,
+    current_index: usize,
 }
 
 impl ProfileManager {
@@ -30,23 +29,21 @@ impl ProfileManager {
         assert!(!profiles.is_empty(), "Нужен хотя бы один профиль");
         Self {
             profiles,
-            current_index: AtomicUsize::new(0),
+            current_index: 0,
         }
     }
 
     pub fn current_profile(&self) -> &DisplayProfile {
-        let idx = self.current_index.load(Ordering::Relaxed);
-        &self.profiles[idx]
+        &self.profiles[self.current_index]
     }
 
     pub fn current_index(&self) -> usize {
-        self.current_index.load(Ordering::Relaxed)
+        self.current_index
     }
 
-    pub fn next_profile(&self) -> &DisplayProfile {
-        let current = self.current_index.load(Ordering::Relaxed);
-        let next = (current + 1) % self.profiles.len();
-        self.current_index.store(next, Ordering::Relaxed);
+    pub fn next_profile(&mut self) -> &DisplayProfile {
+        let next = (self.current_index + 1) % self.profiles.len();
+        self.current_index = next;
         info!(
             "Переключение на профиль: {} ({})",
             self.profiles[next].name, self.profiles[next].description
@@ -54,20 +51,19 @@ impl ProfileManager {
         &self.profiles[next]
     }
 
-    pub fn prev_profile(&self) -> &DisplayProfile {
-        let current = self.current_index.load(Ordering::Relaxed);
-        let prev = if current == 0 {
+    pub fn prev_profile(&mut self) -> &DisplayProfile {
+        let prev = if self.current_index == 0 {
             self.profiles.len() - 1
         } else {
-            current - 1
+            self.current_index - 1
         };
-        self.current_index.store(prev, Ordering::Relaxed);
+        self.current_index = prev;
         &self.profiles[prev]
     }
 
-    pub fn set_profile(&self, index: usize) -> Option<&DisplayProfile> {
+    pub fn set_profile(&mut self, index: usize) -> Option<&DisplayProfile> {
         if index < self.profiles.len() {
-            self.current_index.store(index, Ordering::Relaxed);
+            self.current_index = index;
             Some(&self.profiles[index])
         } else {
             None
@@ -88,9 +84,8 @@ impl ProfileManager {
 
     pub fn remove_profile(&mut self, index: usize) -> Option<DisplayProfile> {
         if index < self.profiles.len() && self.profiles.len() > 1 {
-            let current = self.current_index.load(Ordering::Relaxed);
-            if current >= self.profiles.len() - 1 {
-                self.current_index.store(0, Ordering::Relaxed);
+            if self.current_index >= self.profiles.len() - 1 {
+                self.current_index = 0;
             }
             Some(self.profiles.remove(index))
         } else {

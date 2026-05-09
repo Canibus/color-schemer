@@ -19,6 +19,10 @@
   // Local copy for editing
   let edited = $state(JSON.parse(JSON.stringify(profile)) as DisplayProfile);
 
+  $effect(() => {
+    edited = JSON.parse(JSON.stringify(profile)) as DisplayProfile;
+  });
+
   function handleInput() {
       onPreview(edited.settings);
   }
@@ -34,21 +38,23 @@
       <input type="text" bind:value={edited.description} />
   </label>
 
-  <fieldset>
-      <legend>Settings</legend>
-      <label>Brightness (<span class="value-display">{edited.settings.brightness}</span>)
-          <input type="range" min="0" max="2" step="0.01" bind:value={edited.settings.brightness} oninput={handleInput} />
-      </label>
-      <label>Contrast (<span class="value-display">{edited.settings.contrast}</span>)
-          <input type="range" min="0" max="2" step="0.01" bind:value={edited.settings.contrast} oninput={handleInput} />
-      </label>
-      <label>Gamma (<span class="value-display">{edited.settings.gamma}</span>)
-          <input type="range" min="0.1" max="3" step="0.01" bind:value={edited.settings.gamma} oninput={handleInput} />
-      </label>
-      <label>Digital Vibrance (<span class="value-display">{edited.settings.digital_vibrance}</span>)
-          <input type="range" min="-50" max="100" step="1" bind:value={edited.settings.digital_vibrance} oninput={handleInput} />
-      </label>
-  </fieldset>
+  <div class="field-group">
+      <div class="group-label">Settings</div>
+      <div class="group-content">
+          <label>Brightness (<span class="value-display">{edited.settings.brightness}</span>)
+              <input type="range" min="0" max="2" step="0.01" bind:value={edited.settings.brightness} oninput={handleInput} />
+          </label>
+          <label>Contrast (<span class="value-display">{edited.settings.contrast}</span>)
+              <input type="range" min="0" max="2" step="0.01" bind:value={edited.settings.contrast} oninput={handleInput} />
+          </label>
+          <label>Gamma (<span class="value-display">{edited.settings.gamma}</span>)
+              <input type="range" min="0.1" max="3" step="0.01" bind:value={edited.settings.gamma} oninput={handleInput} />
+          </label>
+          <label>Digital Vibrance (<span class="value-display">{edited.settings.digital_vibrance}</span>)
+              <input type="range" min="-50" max="100" step="1" bind:value={edited.settings.digital_vibrance} oninput={handleInput} />
+          </label>
+      </div>
+  </div>
 
   <div class="actions">
       {#if onDelete}
@@ -76,23 +82,30 @@
     font-weight: bold;
   }
   
-  fieldset {
+  .field-group {
     background: var(--bg-layer);
     border: 1px solid var(--border);
     border-radius: 8px;
-    padding: 18px;
     margin-bottom: 10px;
+    overflow: hidden;
+  }
+  
+  .group-label {
+    background: var(--bg-active);
+    color: var(--primary);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    padding: 6px 12px;
+    border-bottom: 1px solid var(--border);
+    letter-spacing: 0.5px;
+  }
+
+  .group-content {
+    padding: 18px;
     display: flex;
     flex-direction: column;
     gap: 15px;
-  }
-  
-  legend {
-    color: var(--primary);
-    font-family: var(--font-mono);
-    font-size: 12px;
-    text-transform: uppercase;
-    padding: 0 8px;
   }
   
   input[type="text"] {
@@ -112,9 +125,9 @@
   .actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px; }
   
   .delete-btn { 
-    background: #7f1d1d; 
+    background: var(--error-dim); 
     border: none; 
-    color: white; 
+    color: var(--text-main); 
     border-radius: 8px; 
     padding: 8px 16px;
     margin-right: auto;
@@ -122,8 +135,8 @@
   }
   
   .delete-btn:hover { 
-    background: #b91c1c; 
-    box-shadow: 0 0 10px rgba(185, 28, 28, 0.4); 
+    background: var(--error); 
+    box-shadow: 0 0 10px var(--error-glow); 
   }
 
   button:not(.delete-btn) {

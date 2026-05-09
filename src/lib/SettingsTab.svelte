@@ -13,6 +13,10 @@
   let edited = $state(JSON.parse(JSON.stringify(config)) as AppConfig);
   let recordingKey = $state<keyof HotkeyConfig | null>(null);
 
+  $effect(() => {
+    edited = JSON.parse(JSON.stringify(config)) as AppConfig;
+  });
+
   function startRecording(key: keyof HotkeyConfig) {
       recordingKey = key;
   }
@@ -61,49 +65,52 @@
 <div class="settings">
   <h3>Global Settings</h3>
   
-  <fieldset>
-      <legend>Hotkeys</legend>
-      <div class="hotkey-item">
-          <span>Next Profile</span>
-          <button 
-              class:recording={recordingKey === 'next_profile'} 
-              onclick={() => startRecording('next_profile')}
-          >
-              {recordingKey === 'next_profile' ? "Press keys... (Esc to cancel)" : edited.hotkeys.next_profile}
-          </button>
+  <div class="field-group">
+      <div class="group-label">Hotkeys</div>
+      <div class="group-content">
+          <div class="hotkey-item">
+              <span>Next Profile</span>
+              <button 
+                  class:recording={recordingKey === 'next_profile'} 
+                  onclick={() => startRecording('next_profile')}
+              >
+                  {recordingKey === 'next_profile' ? "Press keys... (Esc to cancel)" : edited.hotkeys.next_profile}
+              </button>
+          </div>
+          <div class="hotkey-item">
+              <span>Previous Profile</span>
+              <button 
+                  class:recording={recordingKey === 'prev_profile'} 
+                  onclick={() => startRecording('prev_profile')}
+              >
+                  {recordingKey === 'prev_profile' ? "Press keys... (Esc to cancel)" : edited.hotkeys.prev_profile}
+              </button>
+          </div>
+          <div class="hotkey-item">
+              <span>Reset Profile</span>
+              <button 
+                  class:recording={recordingKey === 'reset'} 
+                  onclick={() => startRecording('reset')}
+              >
+                  {recordingKey === 'reset' ? "Press keys... (Esc to cancel)" : edited.hotkeys.reset}
+              </button>
+          </div>
       </div>
-      <div class="hotkey-item">
-          <span>Previous Profile</span>
-          <button 
-              class:recording={recordingKey === 'prev_profile'} 
-              onclick={() => startRecording('prev_profile')}
-          >
-              {recordingKey === 'prev_profile' ? "Press keys... (Esc to cancel)" : edited.hotkeys.prev_profile}
-          </button>
-      </div>
-      <div class="hotkey-item">
-          <span>Reset Profile</span>
-          <button 
-              class:recording={recordingKey === 'reset'} 
-              onclick={() => startRecording('reset')}
-          >
-              {recordingKey === 'reset' ? "Press keys... (Esc to cancel)" : edited.hotkeys.reset}
-          </button>
-      </div>
-  </fieldset>
+  </div>
 
-  <fieldset>
-      <legend>Behavior</legend>
-      <label class="checkbox-label">
-          <input type="checkbox" bind:checked={edited.show_notifications} />
-          Show Notifications
-      </label>
-      <label class="checkbox-label">
-          <input type="checkbox" bind:checked={edited.start_minimized} />
-          Start Minimized
-      </label>
-  </fieldset>
-
+  <div class="field-group">
+      <div class="group-label">Behavior</div>
+      <div class="group-content">
+          <label class="checkbox-label">
+              <input type="checkbox" bind:checked={edited.show_notifications} />
+              Show Notifications
+          </label>
+          <label class="checkbox-label">
+              <input type="checkbox" bind:checked={edited.start_minimized} />
+              Start Minimized
+          </label>
+      </div>
+  </div>
   <div class="actions">
       <button class="save-btn" onclick={() => onSave(edited)}>Save Settings</button>
   </div>
@@ -122,23 +129,32 @@
     font-size: 16px; 
     margin-top: 0; 
   }
-  fieldset {
+  .field-group {
     background: var(--bg-layer);
     border: 1px solid var(--border);
     border-radius: 8px;
-    padding: 18px;
-    margin-bottom: 15px;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
+    margin-bottom: 10px;
+    overflow: hidden;
   }
-  legend {
+  
+  .group-label {
+    background: var(--bg-active);
     color: var(--primary);
     font-family: var(--font-mono);
-    font-size: 12px;
+    font-size: 11px;
     text-transform: uppercase;
-    padding: 0 8px;
+    padding: 6px 12px;
+    border-bottom: 1px solid var(--border);
+    letter-spacing: 0.5px;
   }
+
+  .group-content {
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+  }
+  
   .hotkey-item { 
     display: flex; 
     align-items: center; 
@@ -169,7 +185,7 @@
   .hotkey-item button.recording {
     border-color: var(--primary);
     box-shadow: var(--glow-shadow), inset 0 0 5px var(--primary-glow);
-    color: #fff;
+    color: var(--text-main);
   }
   .checkbox-label { 
     display: flex; 

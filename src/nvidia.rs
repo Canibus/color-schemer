@@ -3,6 +3,7 @@ use log::info;
 use serde;
 use std::ffi::c_void;
 use std::mem;
+use thiserror::Error;
 
 use crate::platform;
 
@@ -11,8 +12,8 @@ use crate::platform;
 // ============================================================================
 
 #[allow(non_camel_case_types)]
-type NvAPI_Status = i32;
-const NVAPI_OK: NvAPI_Status = 0;
+pub type NvAPI_Status = i32;
+pub const NVAPI_OK: NvAPI_Status = 0;
 const NV_DISPLAY_DVC_INFO_VER: u32 = 0x10010;
 
 #[repr(C)]
@@ -57,6 +58,26 @@ type NvAPI_GetDVCInfo_t =
     unsafe extern "C" fn(usize, u32, *mut NV_DISPLAY_DVC_INFO) -> NvAPI_Status;
 #[allow(non_camel_case_types)]
 type NvAPI_SetDVCLevel_t = unsafe extern "C" fn(usize, u32, i32) -> NvAPI_Status;
+
+// ============================================================================
+// Errors
+// ============================================================================
+
+#[derive(Error, Debug)]
+pub enum NvError {
+    #[error("NVAPI error {0}")]
+    Status(NvAPI_Status),
+    #[error("Library load error: {0}")]
+    Library(String),
+    #[error("Function 0x{0:08X} not found")]
+    NotFound(u32),
+    #[error("OS error: {0}")]
+    Os(String),
+    #[error("Not supported on this platform")]
+    NotSupported,
+}
+
+pub type NvResult<T> = Result<T, NvError>;
 
 // ============================================================================
 // DisplaySettings
@@ -106,10 +127,10 @@ impl DisplaySettings {
 // ============================================================================
 
 pub trait GpuController: Send + Sync {
-    fn apply_display_settings(&self, settings: &DisplaySettings) -> Result<(), String>;
-    fn set_digital_vibrance(&self, level: i32) -> Result<(), String>;
-    fn get_digital_vibrance(&self) -> Result<NV_DISPLAY_DVC_INFO, String>;
-    fn reset(&self) -> Result<(), String>;
+    fn apply_display_settings(&self, settings: &DisplaySettings) -> NvResult<()>;
+    fn set_digital_vibrance(&self, level: i32) -> NvResult<()>;
+    fn get_digital_vibrance(&self) -> NvResult<NV_DISPLAY_DVC_INFO>;
+    fn reset(&self) -> NvResult<()>;
 }
 
 // ============================================================================
@@ -143,9 +164,13 @@ pub fn compute_gamma_ramp(settings: &DisplaySettings) -> [[u16; 256]; 3] {
 
 pub struct NvidiaController {
     _library: Library,
-    query_interface: NvAPI_QueryInterface_t,
     display_handle: usize,
     initialized: bool,
+
+    // Cached function pointers
+    fn_unload: NvAPI_Unload_t,
+    fn_set_dvc_level: NvAPI_SetDVCLevel_t,
+    fn_get_dvc_info: NvAPI_GetDVCInfo_t,
 }
 
 // Безопасность: NvidiaController хранит указатели на функции из DLL,
@@ -154,9 +179,9 @@ unsafe impl Send for NvidiaController {}
 unsafe impl Sync for NvidiaController {}
 
 impl NvidiaController {
-    pub fn new() -> Result<Self, String> {
+    pub fn new() -> NvResult<Self> {
         if !cfg!(windows) {
-            return Err("NvidiaController is only supported on Windows".to_string());
+            return Err(NvError::NotSupported);
         }
 
         info!("Загрузка NVAPI...");
@@ -169,72 +194,66 @@ impl NvidiaController {
 
         let library = unsafe {
             Library::new(lib_name)
-                .map_err(|e| format!("Не удалось загрузить {}: {}", lib_name, e))?
+                .map_err(|e| NvError::Library(format!("Не удалось загрузить {}: {}", lib_name, e)))?
         };
 
         let query_interface: NvAPI_QueryInterface_t = unsafe {
             let sym: Symbol<NvAPI_QueryInterface_t> = library
                 .get(b"nvapi_QueryInterface\0")
-                .map_err(|e| format!("nvapi_QueryInterface not found: {}", e))?;
+                .map_err(|e| NvError::Library(format!("nvapi_QueryInterface not found: {}", e)))?;
             *sym
         };
 
-        let mut controller = Self {
-            _library: library,
+        // Resolve functions temporary to initialize
+        let init_fn = Self::get_func_ptr::<NvAPI_Initialize_t>(query_interface, NVAPI_INITIALIZE)?;
+        let status = unsafe { init_fn() };
+        if status != NVAPI_OK {
+            return Err(NvError::Status(status));
+        }
+
+        let enum_fn = Self::get_func_ptr::<NvAPI_EnumNvidiaDisplayHandle_t>(
             query_interface,
-            display_handle: 0,
-            initialized: false,
+            NVAPI_ENUM_NVIDIA_DISPLAY_HANDLE,
+        )?;
+        let mut display_handle: usize = 0;
+        let status = unsafe { enum_fn(0, &mut display_handle) };
+        if status != NVAPI_OK {
+            return Err(NvError::Status(status));
+        }
+
+        let controller = Self {
+            _library: library,
+            display_handle,
+            initialized: true,
+            fn_unload: Self::get_func_ptr(query_interface, NVAPI_UNLOAD)?,
+            fn_set_dvc_level: Self::get_func_ptr(query_interface, NVAPI_SET_DVC_LEVEL)?,
+            fn_get_dvc_info: Self::get_func_ptr(query_interface, NVAPI_GET_DVC_INFO)?,
         };
 
-        controller.initialize()?;
+        info!("NVAPI инициализирован. Display handle: 0x{:X}", display_handle);
         Ok(controller)
     }
 
-    fn initialize(&mut self) -> Result<(), String> {
-        let init_fn = self.get_function::<NvAPI_Initialize_t>(NVAPI_INITIALIZE)?;
-        let status = unsafe { init_fn() };
-        if status != NVAPI_OK {
-            return Err(format!("NvAPI_Initialize failed: {}", status));
-        }
-        self.initialized = true;
-        info!("NVAPI инициализирован");
-
-        self.display_handle = self.get_display_handle(0)?;
-        info!("Display handle: 0x{:X}", self.display_handle);
-        Ok(())
-    }
-
-    fn get_function<T>(&self, id: u32) -> Result<T, String> {
-        let ptr = unsafe { (self.query_interface)(id) };
+    fn get_func_ptr<T>(qi: NvAPI_QueryInterface_t, id: u32) -> NvResult<T> {
+        let ptr = unsafe { qi(id) };
         if ptr.is_null() {
-            return Err(format!("Function 0x{:08X} not found", id));
+            return Err(NvError::NotFound(id));
         }
         Ok(unsafe { mem::transmute_copy(&ptr) })
     }
 
-    fn get_display_handle(&self, index: u32) -> Result<usize, String> {
-        let enum_fn =
-            self.get_function::<NvAPI_EnumNvidiaDisplayHandle_t>(NVAPI_ENUM_NVIDIA_DISPLAY_HANDLE)?;
-        let mut handle: usize = 0;
-        let status = unsafe { enum_fn(index, &mut handle) };
-        if status != NVAPI_OK {
-            return Err(format!("EnumNvidiaDisplayHandle failed: {}", status));
-        }
-        Ok(handle)
-    }
-
-    fn set_gamma_ramp(settings: &DisplaySettings) -> Result<(), String> {
+    fn set_gamma_ramp(settings: &DisplaySettings) -> NvResult<()> {
         let ramp = compute_gamma_ramp(settings);
-        platform::windows::set_device_gamma_ramp(&ramp)
+        platform::windows::set_device_gamma_ramp(&ramp).map_err(NvError::Os)
     }
 
-    pub fn reset_gamma_ramp() -> Result<(), String> {
+    pub fn reset_gamma_ramp() -> NvResult<()> {
         Self::set_gamma_ramp(&DisplaySettings::default())
     }
 }
 
 impl GpuController for NvidiaController {
-    fn apply_display_settings(&self, settings: &DisplaySettings) -> Result<(), String> {
+    fn apply_display_settings(&self, settings: &DisplaySettings) -> NvResult<()> {
         let validated = settings.validated();
         self.set_digital_vibrance(validated.digital_vibrance)?;
         Self::set_gamma_ramp(&validated)?;
@@ -242,27 +261,25 @@ impl GpuController for NvidiaController {
         Ok(())
     }
 
-    fn set_digital_vibrance(&self, level: i32) -> Result<(), String> {
-        let set_fn = self.get_function::<NvAPI_SetDVCLevel_t>(NVAPI_SET_DVC_LEVEL)?;
-        let status = unsafe { set_fn(self.display_handle, 0, level) };
+    fn set_digital_vibrance(&self, level: i32) -> NvResult<()> {
+        let status = unsafe { (self.fn_set_dvc_level)(self.display_handle, 0, level) };
         if status != NVAPI_OK {
-            return Err(format!("SetDVCLevel failed: {}", status));
+            return Err(NvError::Status(status));
         }
         info!("Digital Vibrance: {}", level);
         Ok(())
     }
 
-    fn get_digital_vibrance(&self) -> Result<NV_DISPLAY_DVC_INFO, String> {
-        let get_fn = self.get_function::<NvAPI_GetDVCInfo_t>(NVAPI_GET_DVC_INFO)?;
+    fn get_digital_vibrance(&self) -> NvResult<NV_DISPLAY_DVC_INFO> {
         let mut info = NV_DISPLAY_DVC_INFO::default();
-        let status = unsafe { get_fn(self.display_handle, 0, &mut info) };
+        let status = unsafe { (self.fn_get_dvc_info)(self.display_handle, 0, &mut info) };
         if status != NVAPI_OK {
-            return Err(format!("GetDVCInfo failed: {}", status));
+            return Err(NvError::Status(status));
         }
         Ok(info)
     }
 
-    fn reset(&self) -> Result<(), String> {
+    fn reset(&self) -> NvResult<()> {
         self.set_digital_vibrance(0)?;
         Self::reset_gamma_ramp()?;
         Ok(())
@@ -272,12 +289,10 @@ impl GpuController for NvidiaController {
 impl Drop for NvidiaController {
     fn drop(&mut self) {
         if self.initialized {
-            if let Ok(unload_fn) = self.get_function::<NvAPI_Unload_t>(NVAPI_UNLOAD) {
-                unsafe {
-                    unload_fn();
-                }
-                info!("NVAPI выгружен");
+            unsafe {
+                (self.fn_unload)();
             }
+            info!("NVAPI выгружен");
         }
     }
 }

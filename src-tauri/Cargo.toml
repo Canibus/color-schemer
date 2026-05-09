@@ -1,0 +1,26 @@
+[package]
+name = "color-schemer-tauri"
+version = "0.1.0"
+description = "Tauri UI wrapper for color-schemer"
+authors = ["you"]
+license = ""
+repository = ""
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "1", features = [] }
+
+[dependencies]
+tauri = { version = "1", features = ["system-tray"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+log = "0.4"
+env_logger = "0.11"
+
+color-schemer = { path = "..", default-features = false, features = ["hotkeys", "notifications"] }
+global-hotkey = "0.6"
+crossbeam-channel = "0.5"
+
+[features]
+custom-protocol = ["tauri/custom-protocol"]
+

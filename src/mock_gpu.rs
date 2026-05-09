@@ -1,4 +1,4 @@
-use crate::nvidia::{DisplaySettings, GpuController, NV_DISPLAY_DVC_INFO};
+use crate::nvidia::{DisplaySettings, GpuController, NvError, NvResult, NV_DISPLAY_DVC_INFO};
 use std::sync::Mutex;
 
 #[derive(Debug, Clone)]
@@ -49,29 +49,29 @@ impl MockGpuController {
 }
 
 impl GpuController for MockGpuController {
-    fn apply_display_settings(&self, settings: &DisplaySettings) -> Result<(), String> {
+    fn apply_display_settings(&self, settings: &DisplaySettings) -> NvResult<()> {
         self.calls
             .lock()
             .unwrap()
             .push(GpuCall::ApplySettings(settings.clone()));
         if *self.should_fail.lock().unwrap() {
-            Err("Mock apply failed".to_string())
+            Err(NvError::Os("Mock apply failed".to_string()))
         } else {
             Ok(())
         }
     }
 
-    fn set_digital_vibrance(&self, level: i32) -> Result<(), String> {
+    fn set_digital_vibrance(&self, level: i32) -> NvResult<()> {
         self.calls.lock().unwrap().push(GpuCall::SetVibrance(level));
         if *self.should_fail.lock().unwrap() {
-            Err("Mock vibrance failed".to_string())
+            Err(NvError::Os("Mock vibrance failed".to_string()))
         } else {
             *self.vibrance_level.lock().unwrap() = level;
             Ok(())
         }
     }
 
-    fn get_digital_vibrance(&self) -> Result<NV_DISPLAY_DVC_INFO, String> {
+    fn get_digital_vibrance(&self) -> NvResult<NV_DISPLAY_DVC_INFO> {
         self.calls.lock().unwrap().push(GpuCall::GetVibrance);
         Ok(NV_DISPLAY_DVC_INFO {
             current_level: *self.vibrance_level.lock().unwrap(),
@@ -82,7 +82,7 @@ impl GpuController for MockGpuController {
         })
     }
 
-    fn reset(&self) -> Result<(), String> {
+    fn reset(&self) -> NvResult<()> {
         self.calls.lock().unwrap().push(GpuCall::Reset);
         *self.vibrance_level.lock().unwrap() = 0;
         Ok(())

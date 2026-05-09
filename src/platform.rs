@@ -29,6 +29,7 @@ pub mod windows {
         ) -> i32;
         fn TranslateMessage(msg: *const MSG) -> i32;
         fn DispatchMessageW(msg: *const MSG) -> isize;
+        fn WaitMessage() -> i32;
     }
 
     const PM_REMOVE: u32 = 0x0001;
@@ -41,6 +42,13 @@ pub mod windows {
                 TranslateMessage(&msg);
                 DispatchMessageW(&msg);
             }
+        }
+    }
+
+    /// Wait for a new message to arrive in the queue (blocking).
+    pub fn wait_message() {
+        unsafe {
+            WaitMessage();
         }
     }
 
@@ -81,6 +89,7 @@ pub mod windows {
     // Windows toast notification
     // ==========================
 
+    #[cfg(feature = "app")]
     pub fn show_notification(title: &str, message: &str) {
         use winrt_notification::Toast;
 
@@ -91,6 +100,9 @@ pub mod windows {
             .duration(winrt_notification::Duration::Short)
             .show();
     }
+
+    #[cfg(not(feature = "app"))]
+    pub fn show_notification(_title: &str, _message: &str) {}
 }
 
 #[cfg(not(windows))]
