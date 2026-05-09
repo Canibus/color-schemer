@@ -39,6 +39,50 @@
           status = `Error: ${e}`;
       }
   }
+
+  async function previewSettings(settings: any) {
+      try {
+          await invoke("preview_settings", { settings });
+      } catch (e) {
+          console.error("Preview failed:", e);
+      }
+  }
+
+  async function saveProfile(updatedProfile: DisplayProfile) {
+      if (editingIndex === null || !config) return;
+      status = "Saving...";
+      try {
+          // Update local config object
+          const newConfig = { ...config };
+          newConfig.profiles[editingIndex] = updatedProfile;
+          
+          // Save to backend
+          await invoke("save_config", { updated: newConfig });
+          
+          // If we edited the currently active profile, apply it properly to update backend state
+          if (editingIndex === activeIndex) {
+              await invoke("apply_profile", { index: editingIndex });
+          }
+          
+          await loadState();
+          editingIndex = null;
+          status = "Saved";
+      } catch (e) {
+          status = `Error saving: ${e}`;
+      }
+  }
+  
+  async function cancelEdit() {
+      editingIndex = null;
+      // Re-apply the active profile to revert any live preview changes
+      if (activeIndex !== null) {
+          try {
+              await invoke("apply_profile", { index: activeIndex });
+          } catch(e) {
+              console.error("Failed to restore active profile", e);
+          }
+      }
+  }
 </script>
 
 <main class="container">
@@ -57,9 +101,9 @@
           {#if editingIndex !== null && config}
               <ProfileEditor 
                   profile={config.profiles[editingIndex]} 
-                  onSave={(p) => { /* TODO */ }} 
-                  onCancel={() => editingIndex = null} 
-                  onPreview={(s) => { /* TODO */ }} 
+                  onSave={saveProfile} 
+                  onCancel={cancelEdit} 
+                  onPreview={previewSettings} 
               />
           {:else}
               <ProfileList 
