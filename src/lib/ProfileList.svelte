@@ -1,10 +1,18 @@
 <!-- src/lib/ProfileList.svelte -->
 <script lang="ts">
   import type { DisplayProfile } from "./types";
-  export let profiles: DisplayProfile[] = [];
-  export let activeIndex: number | null = null;
-  export let onApply: (index: number) => void;
-  export let onEdit: (index: number) => void;
+  
+  let { 
+    profiles = [], 
+    activeIndex = null, 
+    onApply, 
+    onEdit 
+  } = $props<{
+    profiles: DisplayProfile[];
+    activeIndex: number | null;
+    onApply: (index: number) => void;
+    onEdit: (index: number) => void;
+  }>();
 </script>
 
 <section class="list">
@@ -13,31 +21,110 @@
   {:else}
     {#each profiles as p, i}
       <div class="profile-row" class:selected={activeIndex === i}>
-          <button class="apply-btn" on:click={() => onApply(i)} title={p.description}>
+          <button class="apply-btn" onclick={() => onApply(i)} title={p.description}>
             <div class="name">{p.name}</div>
             <div class="desc">{p.description}</div>
           </button>
-          <button class="edit-btn" on:click={() => onEdit(i)}>Edit</button>
+          <button class="edit-btn" onclick={() => onEdit(i)}>Edit</button>
       </div>
     {/each}
   {/if}
 </section>
 
 <div class="actions">
-  <button class="add-btn" on:click={() => onEdit(-1)}>+ Add New Profile</button>
+  <button class="add-btn" onclick={() => onEdit(-1)}>+ Add New Profile</button>
 </div>
 
 <style>
   .list { display: grid; gap: 10px; }
-  .profile-row { display: flex; gap: 10px; border: 1px solid #2a3440; border-radius: 10px; padding: 5px; background: #121821; }
-  .profile-row.selected { border-color: #6fb1ff; }
-  .apply-btn { flex: 1; text-align: left; background: transparent; border: none; color: inherit; cursor: pointer; padding: 5px; }
-  .edit-btn { padding: 5px 10px; background: #2a3440; border: none; border-radius: 5px; color: inherit; cursor: pointer; }
-  .edit-btn:hover { background: #3a4b5d; }
-  .name { font-weight: 650; }
-  .desc { font-size: 12px; opacity: 0.85; }
+  
+  .profile-row {
+    display: flex;
+    gap: 10px;
+    background: var(--bg-layer);
+    border: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+    transition: all 0.2s ease-out;
+    padding: 10px;
+    border-radius: 4px;
+  }
+
+  .profile-row.selected {
+    border-color: var(--primary);
+    box-shadow: var(--glow-shadow);
+  }
+
+  .profile-row.selected::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 4px;
+    background: var(--primary);
+    box-shadow: 2px 0 10px var(--primary);
+  }
+
+  .apply-btn { 
+    flex: 1; 
+    text-align: left; 
+    background: transparent; 
+    border: none; 
+    color: inherit; 
+    cursor: pointer; 
+    padding: 0; 
+  }
+
+  .name { 
+    font-weight: 650;
+    color: var(--text-main);
+    font-family: var(--font-mono);
+  }
+
+  .desc { 
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .edit-btn { 
+    padding: 5px 12px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    color: var(--text-main);
+    cursor: pointer;
+    border-radius: 2px;
+    font-size: 12px;
+    transition: all 0.2s ease;
+    align-self: center;
+  }
+
+  .edit-btn:hover { 
+    border-color: var(--primary);
+    color: var(--primary);
+  }
 
   .actions { margin-top: 15px; display: flex; justify-content: center; }
-  .add-btn { padding: 8px 15px; background: #1f2937; border: 1px dashed #4b5563; border-radius: 5px; color: inherit; cursor: pointer; width: 100%; }
-  .add-btn:hover { background: #374151; border-color: #9ca3af; }
+  .add-btn { 
+    padding: 10px 15px;
+    background: var(--bg-surface);
+    border: 1px dashed var(--border);
+    border-radius: 4px;
+    color: var(--text-muted);
+    cursor: pointer;
+    width: 100%;
+    font-family: var(--font-mono);
+    transition: all 0.2s ease;
+  }
+  .add-btn:hover { 
+    border-color: var(--primary);
+    color: var(--primary);
+    background: var(--bg-layer);
+  }
+
+  .empty {
+    text-align: center;
+    padding: 20px;
+    color: var(--text-muted);
+    border: 1px dashed var(--border);
+    border-radius: 4px;
+  }
 </style>
