@@ -20,7 +20,7 @@
   </g>
 
   <!-- "CS" Monogram (Neon Green / White) -->
-  <text x="256" y="245" font-family="monospace" font-size="140" fill="#76b900" text-anchor="middle" font-weight="900" filter="url(#neon-glow)" style="letter-spacing: -10px;">CS</text>
+  <text x="256" y="220" font-family="monospace" font-size="140" fill="#76b900" text-anchor="middle" dominant-baseline="central" font-weight="900" filter="url(#neon-glow)" style="letter-spacing: -10px;">CS</text>
   
   <!-- Subtle Scanline Effect -->
   <path d="M84 220 L428 220" stroke="#76b900" stroke-width="2" opacity="0.1" />
