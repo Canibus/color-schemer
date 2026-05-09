@@ -71,6 +71,17 @@
           status = `Error saving: ${e}`;
       }
   }
+
+  async function saveSettings(updatedConfig: AppConfig) {
+      status = "Saving settings...";
+      try {
+          await invoke("save_config", { updated: updatedConfig });
+          await loadState();
+          status = "Settings saved";
+      } catch (e) {
+          status = `Error saving settings: ${e}`;
+      }
+  }
   
   async function cancelEdit() {
       editingIndex = null;
@@ -114,7 +125,7 @@
               />
           {/if}
       {:else if activeTab === 'settings' && config}
-          <SettingsTab {config} onSave={(c) => { /* TODO */ }} />
+          <SettingsTab {config} onSave={saveSettings} />
       {/if}
   </div>
 </main>
