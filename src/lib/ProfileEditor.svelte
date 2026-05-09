@@ -5,6 +5,7 @@
   export let onSave: (updated: DisplayProfile) => void;
   export let onCancel: () => void;
   export let onPreview: (settings: DisplaySettings) => void;
+  export let onDelete: (() => void) | undefined = undefined;
 
   // Local copy for editing
   let edited = JSON.parse(JSON.stringify(profile)) as DisplayProfile;
@@ -41,6 +42,9 @@
   </fieldset>
 
   <div class="actions">
+      {#if onDelete}
+        <button class="delete-btn" on:click={onDelete}>Delete</button>
+      {/if}
       <button on:click={onCancel}>Cancel</button>
       <button on:click={() => onSave(edited)}>Save</button>
   </div>
@@ -52,4 +56,6 @@
   fieldset { display: flex; flex-direction: column; gap: 10px; border: 1px solid #2a3440; border-radius: 5px; padding: 15px; }
   .actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px; }
   input[type="text"] { background: #121821; border: 1px solid #2a3440; color: inherit; padding: 5px; border-radius: 3px; }
+  .delete-btn { background: #7f1d1d; margin-right: auto; }
+  .delete-btn:hover { background: #991b1b; }
 </style>

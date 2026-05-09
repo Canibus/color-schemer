@@ -72,6 +72,29 @@
       }
   }
 
+  async function deleteProfile() {
+      if (editingIndex === null || !config) return;
+      if (!confirm("Are you sure you want to delete this profile?")) return;
+      
+      status = "Deleting...";
+      try {
+          const newConfig = { ...config };
+          newConfig.profiles.splice(editingIndex, 1);
+          await invoke("save_config", { updated: newConfig });
+          
+          // If we deleted the active profile, reset to index 0 (if available)
+          if (editingIndex === activeIndex && newConfig.profiles.length > 0) {
+              await invoke("apply_profile", { index: 0 });
+          }
+          
+          await loadState();
+          editingIndex = null;
+          status = "Deleted";
+      } catch (e) {
+          status = `Error deleting: ${e}`;
+      }
+  }
+
   async function saveSettings(updatedConfig: AppConfig) {
       status = "Saving settings...";
       try {
@@ -110,12 +133,26 @@
   <div class="content">
       {#if activeTab === 'profiles'}
           {#if editingIndex !== null && config}
-              <ProfileEditor 
-                  profile={config.profiles[editingIndex]} 
-                  onSave={saveProfile} 
-                  onCancel={cancelEdit} 
-                  onPreview={previewSettings} 
-              />
+              {#if editingIndex === -1}
+                  <ProfileEditor 
+                      profile={{ name: "New Profile", description: "", settings: { brightness: 1, contrast: 1, gamma: 1, digital_vibrance: 0 } }} 
+                      onSave={(p) => {
+                          const newConfig = { ...config };
+                          newConfig.profiles.push(p);
+                          saveSettings(newConfig).then(() => editingIndex = null);
+                      }} 
+                      onCancel={cancelEdit} 
+                      onPreview={previewSettings} 
+                  />
+              {:else}
+                  <ProfileEditor 
+                      profile={config.profiles[editingIndex]} 
+                      onSave={saveProfile} 
+                      onCancel={cancelEdit} 
+                      onPreview={previewSettings} 
+                      onDelete={deleteProfile}
+                  />
+              {/if}
           {:else}
               <ProfileList 
                   {profiles} 

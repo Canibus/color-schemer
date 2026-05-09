@@ -23,6 +23,10 @@
   {/if}
 </section>
 
+<div class="actions">
+  <button class="add-btn" on:click={() => onEdit(-1)}>+ Add New Profile</button>
+</div>
+
 <style>
   .list { display: grid; gap: 10px; }
   .profile-row { display: flex; gap: 10px; border: 1px solid #2a3440; border-radius: 10px; padding: 5px; background: #121821; }
@@ -32,4 +36,8 @@
   .edit-btn:hover { background: #3a4b5d; }
   .name { font-weight: 650; }
   .desc { font-size: 12px; opacity: 0.85; }
+
+  .actions { margin-top: 15px; display: flex; justify-content: center; }
+  .add-btn { padding: 8px 15px; background: #1f2937; border: 1px dashed #4b5563; border-radius: 5px; color: inherit; cursor: pointer; width: 100%; }
+  .add-btn:hover { background: #374151; border-color: #9ca3af; }
 </style>
