@@ -193,7 +193,9 @@
   h1 {
     margin: 0;
     font-size: 18px;
-    letter-spacing: 0.2px;
+    color: var(--primary);
+    text-transform: uppercase;
+    letter-spacing: 1px;
   }
   .status {
     font-size: 12px;
@@ -204,14 +206,20 @@
   .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
   .tabs button {
     appearance: none;
-    border: 1px solid #2a3440;
-    background: #121821;
-    color: inherit;
+    background: var(--bg-layer);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
     padding: 8px 16px;
     border-radius: 8px;
     cursor: pointer;
+    transition: all 0.2s ease-out;
   }
-  .tabs button.active { font-weight: bold; border-color: #6fb1ff; background: #1a232e; }
+  .tabs button.active {
+    color: var(--primary);
+    border-color: var(--primary);
+    box-shadow: var(--glow-shadow);
+    background: var(--bg-active);
+  }
 
   button {
     appearance: none;
