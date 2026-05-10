@@ -23,7 +23,7 @@ enum HotkeyMsg {
 }
 
 struct AppState {
-    nvidia: Arc<NvidiaController>,
+    nvidia: Arc<dyn GpuController>,
     pm: Arc<Mutex<ProfileManager>>,
     config: Arc<Mutex<AppConfig>>,
     hotkey_tx: Sender<HotkeyMsg>,
@@ -166,11 +166,11 @@ fn main() {
     let start_minimized = config.start_minimized;
     let pm = Arc::new(Mutex::new(ProfileManager::new(config.profiles.clone())));
 
-    let nvidia = match NvidiaController::new() {
+    let nvidia: Arc<dyn GpuController> = match NvidiaController::new() {
         Ok(ctrl) => Arc::new(ctrl),
         Err(e) => {
-            eprintln!("NVIDIA init failed: {e}");
-            std::process::exit(1);
+            error!("NVIDIA GPU not found or NVAPI init failed: {}. Falling back to mock controller.", e);
+            Arc::new(color_schemer::mock_gpu::MockGpuController::new())
         }
     };
 
@@ -316,8 +316,7 @@ fn main() {
             SystemTrayEvent::MenuItemClick { id, .. } => match id.as_str() {
                 "quit" => {
                     info!("Quitting from tray menu");
-                    let _ = NvidiaController::reset_gamma_ramp();
-                    let _ = nvidia_for_quit.set_digital_vibrance(0);
+                    let _ = nvidia_for_quit.reset();
                     std::process::exit(0);
                 }
                 "show" => {

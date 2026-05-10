@@ -29,6 +29,11 @@ pub const NVAPI_EXPECTED_LOGICAL_GPU_HANDLE: NvAPI_Status = -100;
 pub const NVAPI_EXPECTED_PHYSICAL_GPU_HANDLE: NvAPI_Status = -101;
 pub const NVAPI_EXPECTED_DISPLAY_HANDLE: NvAPI_Status = -102;
 pub const NVAPI_NOT_SUPPORTED: NvAPI_Status = -148;
+pub const NVAPI_INVALID_USER_PRIVILEGE: NvAPI_Status = -111;
+pub const NVAPI_DATA_NOT_FOUND: NvAPI_Status = -133;
+pub const NVAPI_SETTING_NOT_FOUND: NvAPI_Status = -152;
+pub const NVAPI_MOSAIC_NOT_ACTIVE: NvAPI_Status = -112;
+pub const NVAPI_ACCESS_DENIED: NvAPI_Status = -151;
 
 pub fn nvapi_status_to_string(status: NvAPI_Status) -> &'static str {
     match status {
@@ -49,6 +54,11 @@ pub fn nvapi_status_to_string(status: NvAPI_Status) -> &'static str {
         NVAPI_EXPECTED_PHYSICAL_GPU_HANDLE => "Expected physical GPU handle",
         NVAPI_EXPECTED_DISPLAY_HANDLE => "Expected display handle",
         NVAPI_NOT_SUPPORTED => "Not supported",
+        NVAPI_INVALID_USER_PRIVILEGE => "Invalid user privilege",
+        NVAPI_DATA_NOT_FOUND => "Data not found",
+        NVAPI_SETTING_NOT_FOUND => "Setting not found",
+        NVAPI_MOSAIC_NOT_ACTIVE => "Mosaic not active",
+        NVAPI_ACCESS_DENIED => "Access denied",
         _ => "Unknown NVAPI error",
     }
 }

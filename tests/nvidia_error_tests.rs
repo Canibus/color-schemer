@@ -1,4 +1,4 @@
-use color_schemer::nvidia::{NvError, NVAPI_NVIDIA_DEVICE_NOT_FOUND, NVAPI_INVALID_HANDLE, NVAPI_NOT_SUPPORTED, NVAPI_API_NOT_INITIALIZED, NVAPI_LIBRARY_NOT_FOUND, NVAPI_INVALID_ARGUMENT};
+use color_schemer::nvidia::{NvError, NVAPI_NVIDIA_DEVICE_NOT_FOUND, NVAPI_INVALID_HANDLE, NVAPI_NOT_SUPPORTED, NVAPI_API_NOT_INITIALIZED, NVAPI_LIBRARY_NOT_FOUND, NVAPI_INVALID_ARGUMENT, NVAPI_INVALID_USER_PRIVILEGE, NVAPI_DATA_NOT_FOUND, NVAPI_ACCESS_DENIED};
 
 #[test]
 fn test_nv_error_display() {
@@ -19,6 +19,15 @@ fn test_nv_error_display() {
 
     let err = NvError::Status(NVAPI_INVALID_ARGUMENT);
     assert_eq!(format!("{}", err), "NVAPI Error (-5): Invalid argument");
+
+    let err = NvError::Status(NVAPI_INVALID_USER_PRIVILEGE);
+    assert_eq!(format!("{}", err), "NVAPI Error (-111): Invalid user privilege");
+
+    let err = NvError::Status(NVAPI_DATA_NOT_FOUND);
+    assert_eq!(format!("{}", err), "NVAPI Error (-133): Data not found");
+
+    let err = NvError::Status(NVAPI_ACCESS_DENIED);
+    assert_eq!(format!("{}", err), "NVAPI Error (-151): Access denied");
 
     let err = NvError::Status(999);
     assert_eq!(format!("{}", err), "NVAPI Error (999): Unknown NVAPI error");
