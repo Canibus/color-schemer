@@ -14,6 +14,23 @@ use crate::platform;
 #[allow(non_camel_case_types)]
 pub type NvAPI_Status = i32;
 pub const NVAPI_OK: NvAPI_Status = 0;
+pub const NVAPI_ERROR: NvAPI_Status = -1;
+pub const NVAPI_LIBRARY_NOT_FOUND: NvAPI_Status = -2;
+pub const NVAPI_NO_IMPLEMENTATION: NvAPI_Status = -3;
+pub const NVAPI_API_NOT_INITIALIZED: NvAPI_Status = -4;
+pub const NVAPI_INVALID_ARGUMENT: NvAPI_Status = -5;
+pub const NVAPI_NVIDIA_DEVICE_NOT_FOUND: NvAPI_Status = -6;
+pub const NVAPI_END_ENUMERATION: NvAPI_Status = -7;
+pub const NVAPI_INVALID_HANDLE: NvAPI_Status = -8;
+pub const NVAPI_INCOMPATIBLE_STRUCT_VERSION: NvAPI_Status = -9;
+pub const NVAPI_HANDLE_INVALIDATED: NvAPI_Status = -10;
+pub const NVAPI_OPENGL_CONTEXT_NOT_CURRENT: NvAPI_Status = -11;
+pub const NVAPI_INVALID_POINTER: NvAPI_Status = -14;
+pub const NVAPI_EXPECTED_LOGICAL_GPU_HANDLE: NvAPI_Status = -100;
+pub const NVAPI_EXPECTED_PHYSICAL_GPU_HANDLE: NvAPI_Status = -101;
+pub const NVAPI_EXPECTED_DISPLAY_HANDLE: NvAPI_Status = -102;
+pub const NVAPI_NOT_SUPPORTED: NvAPI_Status = -148;
+
 const NV_DISPLAY_DVC_INFO_VER: u32 = 0x10010;
 
 #[repr(C)]
