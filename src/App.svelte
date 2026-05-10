@@ -204,7 +204,7 @@
   }
 
   .container {
-    padding: 18px;
+    padding: 12px 18px 18px 18px;
     display: grid;
     gap: 14px;
     user-select: none;
