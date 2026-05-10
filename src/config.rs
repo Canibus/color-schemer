@@ -23,6 +23,7 @@ impl Default for HotkeyConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct AppConfig {
     pub language: String,
     pub hotkeys: HotkeyConfig,

@@ -22,7 +22,7 @@
   function handleLanguageChange() {
       i18n.setLanguage(edited.language);
       invoke("save_config", { updated: edited });
-      // onSave(edited) can also be used but invoke updates the backend immediately
+      onSave(edited);
   }
 
   async function startRecording(key: keyof HotkeyConfig) {
@@ -98,7 +98,7 @@
 <svelte:window onkeydown={handleKeyDown} />
 
 <div class="settings">
-  <h3>Global Settings</h3>
+  <h3>{i18n.t('settings.title')}</h3>
   
   <div class="field-group">
       <div class="group-label">{i18n.t('settings.language')}</div>
@@ -159,7 +159,7 @@
   </div>
 
   <div class="field-group">
-      <div class="group-label">Behavior</div>
+      <div class="group-label">{i18n.t('settings.behavior')}</div>
       <div class="group-content">
           <label class="checkbox-label">
               <input type="checkbox" bind:checked={edited.show_notifications} />

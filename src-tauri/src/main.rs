@@ -111,9 +111,21 @@ fn get_config(state: tauri::State<'_, AppState>) -> Result<AppConfig, String> {
 }
 
 #[tauri::command]
-fn save_config(state: tauri::State<'_, AppState>, updated: AppConfig) -> Result<(), String> {
+fn save_config(state: tauri::State<'_, AppState>, app_handle: tauri::AppHandle, updated: AppConfig) -> Result<(), String> {
     // Persist to config.toml (next to executable) using core implementation.
     updated.save();
+
+    // Update tray menu if language changed
+    let lang_changed = {
+        let cfg = lock_cfg(&state.config);
+        cfg.language != updated.language
+    };
+
+    if lang_changed {
+        let tray_handle = app_handle.tray_handle();
+        let _ = tray_handle.get_item("quit").set_title(color_schemer::i18n::t(&updated.language, "tray.quit"));
+        let _ = tray_handle.get_item("show").set_title(color_schemer::i18n::t(&updated.language, "tray.show"));
+    }
 
     // Signal background thread to update hotkeys.
     if let Err(e) = state.hotkey_tx.send(HotkeyMsg::UpdateConfig(updated.hotkeys.clone())) {
@@ -168,8 +180,8 @@ fn main() {
     }
 
     // System Tray Setup
-    let quit = CustomMenuItem::new("quit".to_string(), "Quit");
-    let show = CustomMenuItem::new("show".to_string(), "Show UI");
+    let quit = CustomMenuItem::new("quit".to_string(), color_schemer::i18n::t(&config.language, "tray.quit"));
+    let show = CustomMenuItem::new("show".to_string(), color_schemer::i18n::t(&config.language, "tray.show"));
     let tray_menu = SystemTrayMenu::new()
         .add_item(show)
         .add_native_item(SystemTrayMenuItem::Separator)
@@ -265,14 +277,14 @@ fn main() {
                                 info!("Hotkey triggered: applied profile '{}'", profile.name);
 
                                 // Show notification if enabled
-                                let show_notif = {
+                                let (show_notif, lang) = {
                                     let cfg = config_c.lock().unwrap();
-                                    cfg.show_notifications
+                                    (cfg.show_notifications, cfg.language.clone())
                                 };
                                 if show_notif {
                                     color_schemer::platform::windows::show_notification(
-                                        "Profile Switched",
-                                        &format!("Active profile: {}", profile.name),
+                                        color_schemer::i18n::t(&lang, "notif.title"),
+                                        &color_schemer::i18n::t(&lang, "notif.body").replace("{}", &profile.name),
                                     );
                                 }
                             }

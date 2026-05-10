@@ -3,10 +3,11 @@
   import { onMount } from "svelte";
   import "./theme.css";
   import { invoke } from "@tauri-apps/api/tauri";
-  import type { DisplayProfile, AppConfig } from "./lib/types";
+  import type { DisplayProfile, AppConfig, DisplaySettings } from "./lib/types";
   import ProfileList from "./lib/ProfileList.svelte";
   import ProfileEditor from "./lib/ProfileEditor.svelte";
   import SettingsTab from "./lib/SettingsTab.svelte";
+  import { i18n } from "./lib/i18n.svelte";
 
   let profiles = $state<DisplayProfile[]>([]);
   let activeIndex = $state<number | null>(null);
@@ -44,7 +45,7 @@
       }
   }
 
-  async function previewSettings(settings: any) {
+  async function previewSettings(settings: DisplaySettings) {
       try {
           await invoke("preview_settings", { settings });
       } catch (e) {

@@ -30,7 +30,7 @@
 </script>
 
 <div class="editor">
-  <h3>Edit Profile</h3>
+  <h3>{i18n.t('editor.title')}</h3>
   
   <label>{i18n.t('editor.name')}
       <input type="text" bind:value={edited.name} />
@@ -40,7 +40,7 @@
   </label>
 
   <div class="field-group">
-      <div class="group-label">Settings</div>
+      <div class="group-label">{i18n.t('editor.settings')}</div>
       <div class="group-content">
           <label>{i18n.t('editor.brightness')} (<span class="value-display">{edited.settings.brightness}</span>)
               <input type="range" min="0" max="2" step="0.01" bind:value={edited.settings.brightness} oninput={handleInput} />
