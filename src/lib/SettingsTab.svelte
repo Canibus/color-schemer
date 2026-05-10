@@ -195,7 +195,7 @@
   .field-group {
     background: var(--bg-layer);
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: 10px;
     margin-bottom: 10px;
     overflow: hidden;
   }
@@ -206,13 +206,13 @@
     font-family: var(--font-mono);
     font-size: 11px;
     text-transform: uppercase;
-    padding: 6px 12px;
+    padding: 8px 14px;
     border-bottom: 1px solid var(--border);
-    letter-spacing: 0.5px;
+    letter-spacing: 1px;
   }
 
   .group-content {
-    padding: 18px;
+    padding: 20px;
     display: flex;
     flex-direction: column;
     gap: 15px;

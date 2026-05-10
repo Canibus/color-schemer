@@ -32,26 +32,47 @@
 <div class="editor">
   <h3>{i18n.t('editor.title')}</h3>
   
-  <label>{i18n.t('editor.name')}
-      <input type="text" bind:value={edited.name} />
-  </label>
-  <label>{i18n.t('editor.description')}
-      <input type="text" bind:value={edited.description} />
-  </label>
+  <div class="field-group">
+    <div class="group-label">{i18n.t('editor.info')}</div>
+    <div class="group-content">
+      <label>{i18n.t('editor.name')}
+          <input type="text" bind:value={edited.name} />
+      </label>
+      <label>{i18n.t('editor.description')}
+          <input type="text" bind:value={edited.description} />
+      </label>
+    </div>
+  </div>
 
   <div class="field-group">
       <div class="group-label">{i18n.t('editor.settings')}</div>
       <div class="group-content">
-          <label>{i18n.t('editor.brightness')} (<span class="value-display">{edited.settings.brightness}</span>)
+          <label>
+              <div class="label-header">
+                <span>{i18n.t('editor.brightness')}</span>
+                <span class="value-display">{edited.settings.brightness}</span>
+              </div>
               <input type="range" min="0" max="2" step="0.01" bind:value={edited.settings.brightness} oninput={handleInput} />
           </label>
-          <label>{i18n.t('editor.contrast')} (<span class="value-display">{edited.settings.contrast}</span>)
+          <label>
+              <div class="label-header">
+                <span>{i18n.t('editor.contrast')}</span>
+                <span class="value-display">{edited.settings.contrast}</span>
+              </div>
               <input type="range" min="0" max="2" step="0.01" bind:value={edited.settings.contrast} oninput={handleInput} />
           </label>
-          <label>{i18n.t('editor.gamma')} (<span class="value-display">{edited.settings.gamma}</span>)
+          <label>
+              <div class="label-header">
+                <span>{i18n.t('editor.gamma')}</span>
+                <span class="value-display">{edited.settings.gamma}</span>
+              </div>
               <input type="range" min="0.1" max="3" step="0.01" bind:value={edited.settings.gamma} oninput={handleInput} />
           </label>
-          <label>{i18n.t('editor.vibrance')} (<span class="value-display">{edited.settings.digital_vibrance}</span>)
+          <label>
+              <div class="label-header">
+                <span>{i18n.t('editor.vibrance')}</span>
+                <span class="value-display">{edited.settings.digital_vibrance}</span>
+              </div>
               <input type="range" min="-50" max="100" step="1" bind:value={edited.settings.digital_vibrance} oninput={handleInput} />
           </label>
       </div>
@@ -68,25 +89,36 @@
 
 <style>
   .editor { display: flex; flex-direction: column; gap: 15px; color: var(--text-main); }
-  h3 { color: var(--primary); text-transform: uppercase; font-size: 16px; margin-top: 0; }
+  h3 { color: var(--primary); text-transform: uppercase; font-size: 16px; margin-top: 0; letter-spacing: 1px; font-family: var(--font-mono); }
   
-  label { display: flex; flex-direction: column; gap: 5px; }
+  label { display: flex; flex-direction: column; gap: 8px; font-family: var(--font-mono); font-size: 12px; text-transform: uppercase; color: var(--text-muted); }
   
   input[type="range"] {
     accent-color: var(--primary);
     cursor: pointer;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--bg-surface);
   }
   
   .value-display {
     font-family: var(--font-mono);
     color: var(--primary);
     font-weight: bold;
+    font-size: 13px;
+  }
+
+  .label-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
   }
   
   .field-group {
     background: var(--bg-layer);
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: 10px;
     margin-bottom: 10px;
     overflow: hidden;
   }
@@ -97,60 +129,100 @@
     font-family: var(--font-mono);
     font-size: 11px;
     text-transform: uppercase;
-    padding: 6px 12px;
+    padding: 8px 14px;
     border-bottom: 1px solid var(--border);
-    letter-spacing: 0.5px;
+    letter-spacing: 1px;
   }
 
   .group-content {
-    padding: 18px;
+    padding: 20px;
     display: flex;
     flex-direction: column;
-    gap: 15px;
+    gap: 18px;
   }
   
   input[type="text"] {
     background: var(--bg-surface);
     border: 1px solid var(--border);
     color: var(--text-main);
-    padding: 8px;
-    border-radius: 6px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-family: var(--font-sans);
+    transition: all 0.2s;
   }
   
   input[type="text"]:focus {
     border-color: var(--primary);
     outline: none;
-    box-shadow: 0 0 5px var(--primary-glow);
+    box-shadow: 0 0 5px var(--primary-glow), inset 0 0 5px rgba(0,0,0,0.5);
   }
   
-  .actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px; }
+  .actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 10px; }
   
   .delete-btn { 
-    background: var(--error-dim); 
-    border: none; 
-    color: var(--text-main); 
+    background: var(--bg-surface); 
+    border: 1px solid var(--error-dim); 
+    color: var(--error); 
     border-radius: 8px; 
-    padding: 8px 16px;
+    padding: 8px 18px;
     margin-right: auto;
     cursor: pointer;
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    font-size: 12px;
+    letter-spacing: 1px;
+    transition: all 0.2s;
+    box-shadow: inset 0 -2px 0 var(--error-dim);
   }
   
   .delete-btn:hover { 
-    background: var(--error); 
-    box-shadow: 0 0 10px var(--error-glow); 
+    background: var(--error-dim); 
+    color: var(--text-main);
+    box-shadow: 0 0 10px var(--error-glow), inset 0 -1px 0 var(--error-dim); 
+    transform: translateY(-1px);
+  }
+
+  .delete-btn:active {
+    transform: translateY(1px);
+    box-shadow: none;
   }
 
   button:not(.delete-btn) {
-    background: var(--bg-active);
+    background: var(--bg-surface);
     border: 1px solid var(--border);
     color: var(--text-main);
-    padding: 8px 16px;
+    padding: 8px 20px;
     border-radius: 8px;
     cursor: pointer;
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    font-size: 12px;
+    letter-spacing: 1px;
+    transition: all 0.2s;
   }
 
   button:not(.delete-btn):hover {
     border-color: var(--primary);
-    background: var(--bg-layer);
+    color: var(--primary);
+    background: var(--bg-active);
+    transform: translateY(-1px);
+  }
+  
+  button:not(.delete-btn):last-child {
+    background: var(--primary);
+    color: var(--bg-surface);
+    border-color: var(--primary);
+    font-weight: bold;
+    box-shadow: inset 0 -2px 0 var(--primary-dim);
+  }
+  
+  button:not(.delete-btn):last-child:hover {
+    filter: brightness(1.1);
+    box-shadow: var(--glow-shadow), inset 0 -1px 0 var(--primary-dim);
+  }
+
+  button:not(.delete-btn):active {
+    transform: translateY(1px);
+    box-shadow: none;
   }
 </style>
