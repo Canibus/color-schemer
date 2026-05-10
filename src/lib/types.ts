@@ -23,5 +23,6 @@ export type AppConfig = {
     hotkeys: HotkeyConfig;
     show_notifications: boolean;
     start_minimized: boolean;
+    auto_start: boolean;
     profiles: DisplayProfile[];
 };
