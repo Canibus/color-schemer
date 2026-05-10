@@ -18,7 +18,7 @@
 
 <section class="list">
   {#if profiles.length === 0}
-    <div class="empty">No profiles found.</div>
+    <div class="empty">{i18n.t('profiles.empty')}</div>
   {:else}
     {#each profiles as p, i}
       <div class="profile-row" class:selected={activeIndex === i}>
@@ -41,7 +41,7 @@
 </section>
 
 <div class="actions">
-  <button class="add-btn" onclick={() => onEdit(-1)}>+ Add New Profile</button>
+  <button class="add-btn" onclick={() => onEdit(-1)}>{i18n.t('profiles.add')}</button>
 </div>
 
 <style>

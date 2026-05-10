@@ -15,10 +15,10 @@
   
   let activeTab = $state<'profiles' | 'settings'>('profiles');
   let editingIndex = $state<number | null>(null);
-  let status = $state("Loading…");
+  let status = $state("");
 
   async function loadState() {
-    status = "Loading state...";
+    status = i18n.t("app.status.loading");
     try {
         const res = await invoke<{ profiles: DisplayProfile[]; active_index: number }>("get_profiles_state");
         profiles = res.profiles;
@@ -27,21 +27,21 @@
         if (config && config.language) {
             i18n.setLanguage(config.language);
         }
-        status = "Ready";
+        status = i18n.t("app.status.ready");
     } catch(e) {
-        status = `Error: ${e}`;
+        status = `${i18n.t("app.status.error")}: ${e}`;
     }
   }
 
   onMount(loadState);
 
   async function applyProfile(index: number) {
-      status = "Applying...";
+      status = i18n.t("app.status.applying");
       try {
           await invoke("apply_profile", { index });
           await loadState();
       } catch (e) {
-          status = `Error: ${e}`;
+          status = `${i18n.t("app.status.error")}: ${e}`;
       }
   }
 
@@ -55,7 +55,7 @@
 
   async function saveProfile(updatedProfile: DisplayProfile) {
       if (editingIndex === null || !config) return;
-      status = "Saving...";
+      status = i18n.t("app.status.saving");
       try {
           // Update local config object
           const newConfig = { ...config };
@@ -71,17 +71,17 @@
           
           await loadState();
           editingIndex = null;
-          status = "Saved";
+          status = i18n.t("app.status.saved");
       } catch (e) {
-          status = `Error saving: ${e}`;
+          status = `${i18n.t("app.status.error")}: ${e}`;
       }
   }
 
   async function deleteProfile() {
       if (editingIndex === null || !config) return;
-      if (!confirm("Are you sure you want to delete this profile?")) return;
+      if (!confirm(i18n.t("app.confirm.delete"))) return;
       
-      status = "Deleting...";
+      status = i18n.t("app.status.deleting");
       try {
           const newConfig = { ...config };
           newConfig.profiles.splice(editingIndex, 1);
@@ -94,20 +94,20 @@
           
           await loadState();
           editingIndex = null;
-          status = "Deleted";
+          status = i18n.t("app.status.deleted");
       } catch (e) {
-          status = `Error deleting: ${e}`;
+          status = `${i18n.t("app.status.error")}: ${e}`;
       }
   }
 
   async function saveSettings(updatedConfig: AppConfig) {
-      status = "Saving settings...";
+      status = i18n.t("app.status.saving");
       try {
           await invoke("save_config", { updated: updatedConfig });
           await loadState();
-          status = "Settings saved";
+          status = i18n.t("app.status.saved");
       } catch (e) {
-          status = `Error saving settings: ${e}`;
+          status = `${i18n.t("app.status.error")}: ${e}`;
       }
   }
   
@@ -143,7 +143,7 @@
           {#if editingIndex !== null && config}
               {#if editingIndex === -1}
                   <ProfileEditor 
-                      profile={{ name: "New Profile", description: "", settings: { brightness: 1, contrast: 1, gamma: 1, digital_vibrance: 0 } }} 
+                      profile={{ name: i18n.t('editor.new_profile'), description: "", settings: { brightness: 1, contrast: 1, gamma: 1, digital_vibrance: 0 } }} 
                       onSave={(p) => {
                           const newConfig = { ...config };
                           newConfig.profiles.push(p);

@@ -59,7 +59,7 @@
 
   <div class="actions">
       {#if onDelete}
-        <button class="delete-btn" onclick={onDelete}>Delete</button>
+        <button class="delete-btn" onclick={onDelete}>{i18n.t('editor.delete')}</button>
       {/if}
       <button onclick={onCancel}>{i18n.t('editor.cancel')}</button>
       <button onclick={() => onSave(edited)}>{i18n.t('editor.save')}</button>

@@ -103,10 +103,13 @@
   <div class="field-group">
       <div class="group-label">{i18n.t('settings.language')}</div>
       <div class="group-content">
-          <select bind:value={edited.language} onchange={handleLanguageChange}>
-              <option value="en">English</option>
-              <option value="ru">Русский</option>
-          </select>
+          <div class="select-wrapper">
+              <select bind:value={edited.language} onchange={handleLanguageChange}>
+                  <option value="en">ENGLISH [EN]</option>
+                  <option value="ru">РУССКИЙ [RU]</option>
+              </select>
+              <div class="select-arrow"></div>
+          </div>
       </div>
   </div>
 
@@ -123,7 +126,7 @@
                   {#if recordingKey === 'next_profile'}
                       {i18n.t('hotkey.recording')}
                   {:else}
-                      {edited.hotkeys.next_profile || "NOT CONFIGURED"}
+                      {edited.hotkeys.next_profile || i18n.t('hotkey.none')}
                   {/if}
               </button>
           </div>
@@ -137,7 +140,7 @@
                   {#if recordingKey === 'prev_profile'}
                       {i18n.t('hotkey.recording')}
                   {:else}
-                      {edited.hotkeys.prev_profile || "NOT CONFIGURED"}
+                      {edited.hotkeys.prev_profile || i18n.t('hotkey.none')}
                   {/if}
               </button>
           </div>
@@ -151,7 +154,7 @@
                   {#if recordingKey === 'reset'}
                       {i18n.t('hotkey.recording')}
                   {:else}
-                      {edited.hotkeys.reset || "NOT CONFIGURED"}
+                      {edited.hotkeys.reset || i18n.t('hotkey.none')}
                   {/if}
               </button>
           </div>
@@ -213,6 +216,55 @@
     display: flex;
     flex-direction: column;
     gap: 15px;
+  }
+
+  .select-wrapper {
+    position: relative;
+    width: 100%;
+  }
+
+  select {
+    appearance: none;
+    width: 100%;
+    background: var(--bg-surface);
+    border: 1px solid var(--primary-dim);
+    color: var(--primary);
+    font-family: var(--font-mono);
+    padding: 10px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.2s;
+    box-shadow: inset 0 -2px 0 var(--primary-dim);
+    outline: none;
+  }
+
+  select:hover {
+    border-color: var(--primary);
+    background: var(--bg-active);
+  }
+
+  select:focus {
+    border-color: var(--primary);
+    box-shadow: var(--glow-shadow), inset 0 0 5px var(--primary-glow);
+  }
+
+  .select-arrow {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 0;
+    height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 6px solid var(--primary);
+    pointer-events: none;
+  }
+
+  option {
+    background: var(--bg-layer);
+    color: var(--text-main);
   }
   
   .hotkey-item { 
