@@ -24,6 +24,7 @@ impl Default for HotkeyConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppConfig {
+    pub language: String,
     pub hotkeys: HotkeyConfig,
     pub show_notifications: bool,
     pub start_minimized: bool,
@@ -32,18 +33,22 @@ pub struct AppConfig {
 
 impl Default for AppConfig {
     fn default() -> Self {
-        Self {
-            hotkeys: HotkeyConfig::default(),
-            show_notifications: true,
-            start_minimized: false,
-            profiles: vec![
+        let locale = sys_locale::get_locale().unwrap_or_else(|| "en".to_string());
+        let language = if locale.to_lowercase().starts_with("ru") {
+            "ru".to_string()
+        } else {
+            "en".to_string()
+        };
+
+        let profiles = if language == "ru" {
+            vec![
                 DisplayProfile::new(
-                    "Default",
+                    "Стандарт",
                     "Стандартные настройки",
                     DisplaySettings::default(),
                 ),
                 DisplayProfile::new(
-                    "Gaming",
+                    "Игровой",
                     "Игровой профиль",
                     DisplaySettings {
                         brightness: 1.1,
@@ -53,7 +58,7 @@ impl Default for AppConfig {
                     },
                 ),
                 DisplayProfile::new(
-                    "Night",
+                    "Ночной",
                     "Ночной режим",
                     DisplaySettings {
                         brightness: 0.7,
@@ -62,18 +67,75 @@ impl Default for AppConfig {
                         digital_vibrance: 0,
                     },
                 ),
-            ],
+            ]
+        } else {
+            vec![
+                DisplayProfile::new(
+                    "Default",
+                    "Standard settings",
+                    DisplaySettings::default(),
+                ),
+                DisplayProfile::new(
+                    "Gaming",
+                    "Gaming profile",
+                    DisplaySettings {
+                        brightness: 1.1,
+                        contrast: 1.15,
+                        gamma: 0.95,
+                        digital_vibrance: 63,
+                    },
+                ),
+                DisplayProfile::new(
+                    "Night",
+                    "Night mode",
+                    DisplaySettings {
+                        brightness: 0.7,
+                        contrast: 0.9,
+                        gamma: 1.2,
+                        digital_vibrance: 0,
+                    },
+                ),
+            ]
+        };
+
+        Self {
+            language,
+            hotkeys: HotkeyConfig::default(),
+            show_notifications: true,
+            start_minimized: false,
+            profiles,
         }
     }
 }
 
 impl AppConfig {
     fn config_path() -> PathBuf {
-        let mut path = std::env::current_exe()
-            .unwrap_or_else(|_| PathBuf::from("."))
-            .parent()
-            .unwrap_or_else(|| std::path::Path::new("."))
-            .to_path_buf();
+        // 1. Пытаемся найти конфиг рядом с .exe (портативный режим)
+        if let Ok(exe_path) = std::env::current_exe() {
+            if let Some(exe_dir) = exe_path.parent() {
+                let portable_config = exe_dir.join("config.toml");
+                if portable_config.exists() {
+                    return portable_config;
+                }
+            }
+        }
+
+        // 2. Иначе используем стандартную папку AppData для установленного приложения
+        // В Windows это обычно C:\Users\<Name>\AppData\Local\color-schemer
+        let mut path = if let Ok(local_app_data) = std::env::var("LOCALAPPDATA") {
+            PathBuf::from(local_app_data)
+        } else {
+            // Фолбэк на текущую директорию если переменная окружения не найдена
+            PathBuf::from(".")
+        };
+
+        path.push("color-schemer");
+        
+        // Создаем директорию если её нет
+        if !path.exists() {
+            let _ = fs::create_dir_all(&path);
+        }
+
         path.push("config.toml");
         path
     }

@@ -21,12 +21,33 @@ fn test_default_config() {
     assert!(!config.start_minimized);
     assert_eq!(config.profiles.len(), 3);
     assert_eq!(config.hotkeys.next_profile, "Ctrl+Shift+F5");
+    // This will fail to compile until 'language' field is added
+    assert!(config.language == "en" || config.language == "ru");
+}
+
+#[test]
+fn test_localized_defaults() {
+    let config = AppConfig::default();
+    if config.language == "ru" {
+        assert_eq!(config.profiles[0].name, "Стандарт");
+        assert_eq!(config.profiles[1].name, "Игровой");
+        assert_eq!(config.profiles[2].name, "Ночной");
+    } else {
+        assert_eq!(config.profiles[0].name, "Default");
+        assert_eq!(config.profiles[1].name, "Gaming");
+        assert_eq!(config.profiles[2].name, "Night");
+    }
 }
 
 #[test]
 fn test_default_has_standard_profile() {
     let config = AppConfig::default();
-    assert_eq!(config.profiles[0].name, "Default");
+    // Profile name depends on language now
+    if config.language == "ru" {
+        assert_eq!(config.profiles[0].name, "Стандарт");
+    } else {
+        assert_eq!(config.profiles[0].name, "Default");
+    }
     assert!(config.profiles[0].settings.is_default());
 }
 
@@ -60,6 +81,7 @@ fn test_json_roundtrip() {
 #[test]
 fn test_load_valid_config() {
     let content = r#"
+language = "en"
 show_notifications = false
 start_minimized = true
 
@@ -82,6 +104,7 @@ digital_vibrance = 42
     let file = temp_config(content);
     let config = AppConfig::load_from(file.path());
 
+    assert_eq!(config.language, "en");
     assert!(!config.show_notifications);
     assert!(config.start_minimized);
     assert_eq!(config.profiles.len(), 1);
@@ -138,6 +161,7 @@ fn test_save_and_reload() {
     config.save_to(&path).unwrap();
 
     let loaded = AppConfig::load_from(&path);
+    assert_eq!(loaded.language, config.language);
     assert!(!loaded.show_notifications);
     assert_eq!(loaded.profiles.len(), 4);
     assert_eq!(loaded.profiles[3].name, "Extra");
@@ -151,6 +175,7 @@ fn test_save_and_reload() {
 #[test]
 fn test_multiple_profiles_in_config() {
     let content = r#"
+language = "en"
 show_notifications = true
 start_minimized = false
 
@@ -190,6 +215,7 @@ digital_vibrance = 200
     let file = temp_config(content);
     let config = AppConfig::load_from(file.path());
 
+    assert_eq!(config.language, "en");
     assert_eq!(config.profiles.len(), 3);
     assert_eq!(config.profiles[0].name, "A");
     assert_eq!(config.profiles[1].name, "B");

@@ -19,6 +19,7 @@ export type HotkeyConfig = {
 };
 
 export type AppConfig = {
+    language: string;
     hotkeys: HotkeyConfig;
     show_notifications: boolean;
     start_minimized: boolean;
