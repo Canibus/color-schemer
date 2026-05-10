@@ -25,14 +25,18 @@ All styles must reference the variables defined in `src/theme.css`:
 
 ---
 
-## 2. Iconography: "The Prism"
-The brand icon represents light manipulation through a geometric prism.
+## 2. Iconography: "Hardware Stealth Monitor"
+The brand icon represents a technical display interface, emphasizing precision calibration and hardware control.
 
-- **Concept:** A central prism hit by white light, emitting three shades of green rays.
+- **Concept:** A stylized "HUD Monitor" frame containing the "CS" monogram.
+- **Visual Elements:**
+    - **Chassis:** A rectangular monitor frame in Dim Green (`#2d4a00`).
+    - **Monogram:** "CS" centered in the frame, using Neon Green (`#76b900`) with a soft glow.
+    - **Calibration Brackets:** Four L-shaped brackets in the corners of the "screen" area in Neon Green (`#76b900`), suggesting precision alignment.
 - **Implementation:** 
     - Master SVG: `src-tauri/icons/icon.svg`.
-    - Assets: Generated PNGs in `src-tauri/icons/`.
-    - Frontend serving: `public/icon.svg` (for Vite/Header).
+    - Frontend serving: `public/icon.svg`.
+    - Assets: Binary icons (.ico, .png) must be regenerated from this master SVG.
 
 ---
 

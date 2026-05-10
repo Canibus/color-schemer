@@ -1,6 +1,8 @@
 <!-- src/lib/SettingsTab.svelte -->
 <script lang="ts">
+  import { invoke } from "@tauri-apps/api/tauri";
   import type { AppConfig, HotkeyConfig } from "./types";
+  import { i18n } from "./i18n.svelte";
   
   let { 
     config, 
@@ -17,11 +19,31 @@
     edited = JSON.parse(JSON.stringify(config)) as AppConfig;
   });
 
-  function startRecording(key: keyof HotkeyConfig) {
-      recordingKey = key;
+  function handleLanguageChange() {
+      i18n.setLanguage(edited.language);
+      invoke("save_config", { updated: edited });
+      // onSave(edited) can also be used but invoke updates the backend immediately
   }
 
-  function handleKeyDown(event: KeyboardEvent) {
+  async function startRecording(key: keyof HotkeyConfig) {
+      recordingKey = key;
+      await invoke("set_recording_mode", { active: true });
+  }
+
+  function normalizeHotkey(str: string): string {
+      if (!str) return "";
+      const parts = str.split("+").map(s => {
+          let t = s.trim().toUpperCase();
+          if (t === "CONTROL" || t === "CTRL") return "CTRL";
+          if (t === "META" || t === "WIN" || t === "SUPER") return "WIN";
+          return t;
+      });
+      const key = parts.pop() || "";
+      const mods = parts.sort();
+      return mods.length > 0 ? `${mods.join("+")}+${key}` : key;
+  }
+
+  async function handleKeyDown(event: KeyboardEvent) {
       if (!recordingKey) return;
 
       // Prevent default behavior (e.g., Ctrl+S saving the page)
@@ -29,6 +51,7 @@
 
       if (event.key === "Escape") {
           recordingKey = null;
+          await invoke("set_recording_mode", { active: false });
           return;
       }
 
@@ -48,15 +71,27 @@
       if (mainKey.startsWith("F") && mainKey.length > 1) {
           // F1, F2, etc. are already fine
       } else if (mainKey === " ") {
-          mainKey = "Space"; // Though space isn't explicitly in our Rust match yet, good for future
-      } else if (mainKey.length > 1) {
-          // Other special keys might need mapping, but our backend mostly wants single chars or Fn keys
+          mainKey = "Space";
       }
 
       const hotkeyStr = mods.length > 0 ? `${mods.join("+")}+${mainKey}` : mainKey;
+      const normalizedNew = normalizeHotkey(hotkeyStr);
       
-      edited.hotkeys[recordingKey] = hotkeyStr;
+      // Create a copy to ensure Svelte 5 reactivity triggers properly on assignment
+      const newHotkeys = { ...edited.hotkeys };
+      
+      // Clear this hotkey if it's already used by another action
+      const keys = Object.keys(newHotkeys) as (keyof HotkeyConfig)[];
+      keys.forEach((key) => {
+          if (key !== recordingKey && normalizeHotkey(newHotkeys[key]) === normalizedNew) {
+              newHotkeys[key] = "";
+          }
+      });
+
+      newHotkeys[recordingKey] = hotkeyStr;
+      edited.hotkeys = newHotkeys;
       recordingKey = null;
+      await invoke("set_recording_mode", { active: false });
   }
 </script>
 
@@ -66,33 +101,58 @@
   <h3>Global Settings</h3>
   
   <div class="field-group">
-      <div class="group-label">Hotkeys</div>
+      <div class="group-label">{i18n.t('settings.language')}</div>
+      <div class="group-content">
+          <select bind:value={edited.language} onchange={handleLanguageChange}>
+              <option value="en">English</option>
+              <option value="ru">Русский</option>
+          </select>
+      </div>
+  </div>
+
+  <div class="field-group">
+      <div class="group-label">{i18n.t('settings.hotkeys')}</div>
       <div class="group-content">
           <div class="hotkey-item">
-              <span>Next Profile</span>
+              <span>{i18n.t('hotkey.next')}</span>
               <button 
                   class:recording={recordingKey === 'next_profile'} 
+                  class:empty={!edited.hotkeys.next_profile && recordingKey !== 'next_profile'}
                   onclick={() => startRecording('next_profile')}
               >
-                  {recordingKey === 'next_profile' ? "Press keys... (Esc to cancel)" : edited.hotkeys.next_profile}
+                  {#if recordingKey === 'next_profile'}
+                      {i18n.t('hotkey.recording')}
+                  {:else}
+                      {edited.hotkeys.next_profile || "NOT CONFIGURED"}
+                  {/if}
               </button>
           </div>
           <div class="hotkey-item">
-              <span>Previous Profile</span>
+              <span>{i18n.t('hotkey.prev')}</span>
               <button 
                   class:recording={recordingKey === 'prev_profile'} 
+                  class:empty={!edited.hotkeys.prev_profile && recordingKey !== 'prev_profile'}
                   onclick={() => startRecording('prev_profile')}
               >
-                  {recordingKey === 'prev_profile' ? "Press keys... (Esc to cancel)" : edited.hotkeys.prev_profile}
+                  {#if recordingKey === 'prev_profile'}
+                      {i18n.t('hotkey.recording')}
+                  {:else}
+                      {edited.hotkeys.prev_profile || "NOT CONFIGURED"}
+                  {/if}
               </button>
           </div>
           <div class="hotkey-item">
-              <span>Reset Profile</span>
+              <span>{i18n.t('hotkey.reset')}</span>
               <button 
                   class:recording={recordingKey === 'reset'} 
+                  class:empty={!edited.hotkeys.reset && recordingKey !== 'reset'}
                   onclick={() => startRecording('reset')}
               >
-                  {recordingKey === 'reset' ? "Press keys... (Esc to cancel)" : edited.hotkeys.reset}
+                  {#if recordingKey === 'reset'}
+                      {i18n.t('hotkey.recording')}
+                  {:else}
+                      {edited.hotkeys.reset || "NOT CONFIGURED"}
+                  {/if}
               </button>
           </div>
       </div>
@@ -103,16 +163,16 @@
       <div class="group-content">
           <label class="checkbox-label">
               <input type="checkbox" bind:checked={edited.show_notifications} />
-              Show Notifications
+              {i18n.t('settings.notifications')}
           </label>
           <label class="checkbox-label">
               <input type="checkbox" bind:checked={edited.start_minimized} />
-              Start Minimized
+              {i18n.t('settings.minimized')}
           </label>
       </div>
   </div>
   <div class="actions">
-      <button class="save-btn" onclick={() => onSave(edited)}>Save Settings</button>
+      <button class="save-btn" onclick={() => onSave(edited)}>{i18n.t('settings.save')}</button>
   </div>
 </div>
 
@@ -186,6 +246,13 @@
     border-color: var(--primary);
     box-shadow: var(--glow-shadow), inset 0 0 5px var(--primary-glow);
     color: var(--text-main);
+  }
+  .hotkey-item button.empty {
+    color: var(--text-muted);
+    border-color: var(--border);
+    opacity: 0.7;
+    font-style: italic;
+    box-shadow: none;
   }
   .checkbox-label { 
     display: flex; 

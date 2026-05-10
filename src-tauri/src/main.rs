@@ -19,6 +19,7 @@ struct ProfilesState {
 
 enum HotkeyMsg {
     UpdateConfig(HotkeyConfig),
+    SetRecording(bool),
 }
 
 struct AppState {
@@ -26,6 +27,20 @@ struct AppState {
     pm: Arc<Mutex<ProfileManager>>,
     config: Arc<Mutex<AppConfig>>,
     hotkey_tx: Sender<HotkeyMsg>,
+    recording_mode: Arc<Mutex<bool>>,
+}
+
+#[tauri::command]
+fn set_recording_mode(state: tauri::State<'_, AppState>, active: bool) {
+    if let Ok(mut mode) = state.recording_mode.lock() {
+        *mode = active;
+        info!("Recording mode: {}", active);
+        
+        // Signal the hotkey thread to unregister/re-register
+        if let Err(e) = state.hotkey_tx.send(HotkeyMsg::SetRecording(active)) {
+            error!("Failed to send recording mode message: {}", e);
+        }
+    }
 }
 
 fn lock_pm(pm: &Arc<Mutex<ProfileManager>>) -> std::sync::MutexGuard<'_, ProfileManager> {
@@ -163,12 +178,14 @@ fn main() {
 
     let config_state = Arc::new(Mutex::new(config.clone()));
     let (hotkey_tx, hotkey_rx) = unbounded::<HotkeyMsg>();
+    let recording_mode = Arc::new(Mutex::new(false));
 
     // Background hotkey handler
     {
         let nvidia_c = nvidia.clone();
         let pm_c = pm.clone();
         let config_c = config_state.clone(); 
+        let recording_mode_c = recording_mode.clone();
         
         std::thread::spawn(move || {
             let mut hotkey_controller = HotkeyController::new(&config.hotkeys).ok();
@@ -179,15 +196,11 @@ fn main() {
                 // 1. Process Windows messages (crucial for global-hotkey on Windows)
                 color_schemer::platform::windows::pump_messages();
 
-                // 2. Check for config updates
+                // 2. Check for messages
                 if let Ok(msg) = hotkey_rx.try_recv() {
                     match msg {
                         HotkeyMsg::UpdateConfig(new_cfg) => {
-                            // Drop the old controller first to unregister hotkeys from Windows.
-                            // If we don't do this, HotkeyController::new will fail because 
-                            // the hotkeys are already registered by the previous manager.
                             hotkey_controller = None;
-                            
                             match HotkeyController::new(&new_cfg) {
                                 Ok(new_hk) => {
                                     hotkey_controller = Some(new_hk);
@@ -196,11 +209,38 @@ fn main() {
                                 Err(e) => error!("Failed to re-register hotkeys: {}", e),
                             }
                         }
+                        HotkeyMsg::SetRecording(active) => {
+                            if active {
+                                // Clear controller to unregister everything from OS
+                                hotkey_controller = None;
+                                info!("Hotkeys unregistered for recording mode");
+                            } else {
+                                // Re-register based on CURRENT config
+                                let cfg = {
+                                    let c = config_c.lock().unwrap();
+                                    c.hotkeys.clone()
+                                };
+                                match HotkeyController::new(&cfg) {
+                                    Ok(new_hk) => {
+                                        hotkey_controller = Some(new_hk);
+                                        info!("Hotkeys re-registered after recording mode");
+                                    }
+                                    Err(e) => error!("Failed to re-register hotkeys: {}", e),
+                                }
+                            }
+                        }
                     }
                 }
 
                 // Check for hotkey events
                 while let Ok(event) = GlobalHotKeyEvent::receiver().try_recv() {
+                    // Ignore all hotkey events if we are in recording mode in the UI
+                    if let Ok(mode) = recording_mode_c.lock() {
+                        if *mode {
+                            continue;
+                        }
+                    }
+
                     let now = Instant::now();
                     if event.state() == HotKeyState::Pressed && now.duration_since(last_trigger) > cooldown {
                         last_trigger = now;
@@ -252,6 +292,7 @@ fn main() {
             pm,
             config: config_state,
             hotkey_tx,
+            recording_mode,
         })
         .system_tray(system_tray)
         .on_system_tray_event(move |app, event| match event {
@@ -299,7 +340,8 @@ fn main() {
             reset_profile,
             get_config,
             save_config,
-            preview_settings
+            preview_settings,
+            set_recording_mode
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

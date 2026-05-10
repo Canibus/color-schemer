@@ -1,6 +1,7 @@
 <!-- src/lib/ProfileEditor.svelte -->
 <script lang="ts">
   import type { DisplayProfile, DisplaySettings } from "./types";
+  import { i18n } from "./i18n.svelte";
   
   let { 
     profile, 
@@ -31,26 +32,26 @@
 <div class="editor">
   <h3>Edit Profile</h3>
   
-  <label>Name
+  <label>{i18n.t('editor.name')}
       <input type="text" bind:value={edited.name} />
   </label>
-  <label>Description
+  <label>{i18n.t('editor.description')}
       <input type="text" bind:value={edited.description} />
   </label>
 
   <div class="field-group">
       <div class="group-label">Settings</div>
       <div class="group-content">
-          <label>Brightness (<span class="value-display">{edited.settings.brightness}</span>)
+          <label>{i18n.t('editor.brightness')} (<span class="value-display">{edited.settings.brightness}</span>)
               <input type="range" min="0" max="2" step="0.01" bind:value={edited.settings.brightness} oninput={handleInput} />
           </label>
-          <label>Contrast (<span class="value-display">{edited.settings.contrast}</span>)
+          <label>{i18n.t('editor.contrast')} (<span class="value-display">{edited.settings.contrast}</span>)
               <input type="range" min="0" max="2" step="0.01" bind:value={edited.settings.contrast} oninput={handleInput} />
           </label>
-          <label>Gamma (<span class="value-display">{edited.settings.gamma}</span>)
+          <label>{i18n.t('editor.gamma')} (<span class="value-display">{edited.settings.gamma}</span>)
               <input type="range" min="0.1" max="3" step="0.01" bind:value={edited.settings.gamma} oninput={handleInput} />
           </label>
-          <label>Digital Vibrance (<span class="value-display">{edited.settings.digital_vibrance}</span>)
+          <label>{i18n.t('editor.vibrance')} (<span class="value-display">{edited.settings.digital_vibrance}</span>)
               <input type="range" min="-50" max="100" step="1" bind:value={edited.settings.digital_vibrance} oninput={handleInput} />
           </label>
       </div>
@@ -60,8 +61,8 @@
       {#if onDelete}
         <button class="delete-btn" onclick={onDelete}>Delete</button>
       {/if}
-      <button onclick={onCancel}>Cancel</button>
-      <button onclick={() => onSave(edited)}>Save</button>
+      <button onclick={onCancel}>{i18n.t('editor.cancel')}</button>
+      <button onclick={() => onSave(edited)}>{i18n.t('editor.save')}</button>
   </div>
 </div>
 

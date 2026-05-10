@@ -1,6 +1,7 @@
 <!-- src/lib/ProfileList.svelte -->
 <script lang="ts">
   import type { DisplayProfile } from "./types";
+  import { i18n } from "./i18n.svelte";
   
   let { 
     profiles = [], 
@@ -22,10 +23,18 @@
     {#each profiles as p, i}
       <div class="profile-row" class:selected={activeIndex === i}>
           <button class="apply-btn" onclick={() => onApply(i)} title={p.description}>
-            <div class="name">{p.name}</div>
+            <div class="name">
+              {p.name}
+              {#if activeIndex === i}
+                <span class="active-badge">{i18n.t('profiles.active')}</span>
+              {/if}
+            </div>
             <div class="desc">{p.description}</div>
           </button>
-          <button class="edit-btn" onclick={() => onEdit(i)}>Edit</button>
+          {#if activeIndex !== i}
+            <button class="apply-action-btn" onclick={() => onApply(i)}>{i18n.t('profiles.apply')}</button>
+          {/if}
+          <button class="edit-btn" onclick={() => onEdit(i)}>{i18n.t('profiles.edit')}</button>
       </div>
     {/each}
   {/if}
@@ -104,6 +113,34 @@
   .edit-btn:hover { 
     border-color: var(--primary);
     color: var(--primary);
+  }
+
+  .apply-action-btn {
+    padding: 5px 12px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    color: var(--text-main);
+    cursor: pointer;
+    border-radius: 8px;
+    font-size: 12px;
+    transition: all 0.2s ease;
+    align-self: center;
+  }
+
+  .apply-action-btn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+  }
+
+  .active-badge {
+    margin-left: 8px;
+    font-size: 10px;
+    padding: 2px 6px;
+    background: var(--primary);
+    color: var(--bg-base);
+    border-radius: 4px;
+    font-weight: bold;
+    text-transform: uppercase;
   }
 
   .actions { margin-top: 15px; display: flex; justify-content: center; }

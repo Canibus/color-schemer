@@ -23,6 +23,9 @@
         profiles = res.profiles;
         activeIndex = res.active_index;
         config = await invoke<AppConfig>("get_config");
+        if (config && config.language) {
+            i18n.setLanguage(config.language);
+        }
         status = "Ready";
     } catch(e) {
         status = `Error: ${e}`;
@@ -130,8 +133,8 @@
   </header>
 
   <nav class="tabs">
-      <button class:active={activeTab === 'profiles'} onclick={() => { activeTab = 'profiles'; editingIndex = null; }}>Profiles</button>
-      <button class:active={activeTab === 'settings'} onclick={() => activeTab = 'settings'}>Settings</button>
+      <button class:active={activeTab === 'profiles'} onclick={() => { activeTab = 'profiles'; editingIndex = null; }}>{i18n.t('nav.profiles')}</button>
+      <button class:active={activeTab === 'settings'} onclick={() => activeTab = 'settings'}>{i18n.t('nav.settings')}</button>
   </nav>
 
   <div class="content">

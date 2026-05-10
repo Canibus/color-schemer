@@ -27,30 +27,39 @@ impl HotkeyController {
         let manager = GlobalHotKeyManager::new()
             .map_err(|e| format!("Не удалось создать менеджер горячих клавиш: {}", e))?;
 
-        let next_hotkey =
-            parse_hotkey(&config.next_profile).map_err(|e| format!("next_profile: {}", e))?;
-        let prev_hotkey =
-            parse_hotkey(&config.prev_profile).map_err(|e| format!("prev_profile: {}", e))?;
-        let reset_hotkey = parse_hotkey(&config.reset).map_err(|e| format!("reset: {}", e))?;
+        let mut registered_ids = std::collections::HashSet::new();
 
-        let next_id = next_hotkey.id();
-        let prev_id = prev_hotkey.id();
-        let reset_id = reset_hotkey.id();
+        let mut register = |label: &str, input: &str| -> Result<Option<u32>, String> {
+            if input.trim().is_empty() {
+                return Ok(None);
+            }
+            let hk = parse_hotkey(input).map_err(|e| format!("{}: {}", label, e))?;
+            let id = hk.id();
+            if registered_ids.contains(&id) {
+                info!("Горячая клавиша '{}' уже зарегистрирована, пропускаем дубликат для '{}'", input, label);
+                return Ok(Some(id));
+            }
+            manager.register(hk).map_err(|e| {
+                format!("Не удалось зарегистрировать '{}' для '{}': {}", input, label, e)
+            })?;
+            registered_ids.insert(id);
+            Ok(Some(id))
+        };
 
-        manager
-            .register(next_hotkey)
-            .map_err(|e| format!("Не удалось зарегистрировать '{}': {}", config.next_profile, e))?;
-        manager
-            .register(prev_hotkey)
-            .map_err(|e| format!("Не удалось зарегистрировать '{}': {}", config.prev_profile, e))?;
-        manager
-            .register(reset_hotkey)
-            .map_err(|e| format!("Не удалось зарегистрировать '{}': {}", config.reset, e))?;
+        let next_id = register("next_profile", &config.next_profile)?.unwrap_or(0);
+        let prev_id = register("prev_profile", &config.prev_profile)?.unwrap_or(0);
+        let reset_id = register("reset", &config.reset)?.unwrap_or(0);
 
         info!("Горячие клавиши зарегистрированы:");
-        info!("  {} — следующий профиль", config.next_profile);
-        info!("  {} — предыдущий профиль", config.prev_profile);
-        info!("  {} — сброс к стандартным", config.reset);
+        if !config.next_profile.is_empty() {
+            info!("  {} — следующий профиль", config.next_profile);
+        }
+        if !config.prev_profile.is_empty() {
+            info!("  {} — предыдущий профиль", config.prev_profile);
+        }
+        if !config.reset.is_empty() {
+            info!("  {} — сброс к стандартным", config.reset);
+        }
 
         Ok(Self {
             _manager: manager,
@@ -244,5 +253,21 @@ mod tests {
     #[test]
     fn rejects_multiple_keys() {
         assert!(parse_hotkey("Ctrl+A+B").is_err());
+    }
+
+    #[test]
+    fn handles_duplicate_registration_gracefully() {
+        let config = HotkeyConfig {
+            next_profile: "Ctrl+A".to_string(),
+            prev_profile: "Ctrl+A".to_string(), // Duplicate
+            reset: "Ctrl+R".to_string(),
+        };
+        
+        let controller = HotkeyController::new(&config).expect("Should succeed now");
+        assert_eq!(controller.next_id, controller.prev_id);
+        
+        // Verify action mapping (should return the first match)
+        let action = controller.get_action(controller.next_id).unwrap();
+        assert_eq!(action, HotkeyAction::NextProfile);
     }
 }
