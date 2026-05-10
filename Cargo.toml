@@ -30,6 +30,7 @@ sys-locale = "0.3"
 # Windows-only dependencies
 [target.'cfg(windows)'.dependencies]
 winrt-notification = { version = "0.5", optional = true }
+winreg = "0.52"
 
 [dev-dependencies]
 tempfile = "3"
