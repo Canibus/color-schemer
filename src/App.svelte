@@ -3,6 +3,7 @@
   import { onMount } from "svelte";
   import "./theme.css";
   import { invoke } from "@tauri-apps/api/tauri";
+  import { appWindow } from "@tauri-apps/api/window";
   import type { DisplayProfile, AppConfig, DisplaySettings } from "./lib/types";
   import ProfileList from "./lib/ProfileList.svelte";
   import ProfileEditor from "./lib/ProfileEditor.svelte";
@@ -16,6 +17,14 @@
   let activeTab = $state<'profiles' | 'settings'>('profiles');
   let editingIndex = $state<number | null>(null);
   let status = $state("");
+
+  function minimizeWindow() {
+    appWindow.minimize();
+  }
+
+  function closeWindow() {
+    appWindow.close();
+  }
 
   async function loadState() {
     status = i18n.t("app.status.loading");
@@ -125,12 +134,22 @@
 </script>
 
 <main class="container">
-  <header class="header">
-    <div class="brand">
+  <header class="header" data-tauri-drag-region>
+    <div class="brand" data-tauri-drag-region>
       <img src="/icon.svg" alt="" class="logo" />
-      <h1>color-schemer</h1>
+      <h1 data-tauri-drag-region>color-schemer</h1>
     </div>
-    <div class="status">{status}</div>
+    <div class="header-right">
+      <div class="status">{status}</div>
+      <div class="window-controls">
+        <button class="win-btn minimize" onclick={minimizeWindow} title="Minimize">
+          <svg width="12" height="12" viewBox="0 0 12 12"><rect fill="currentColor" x="2" y="5.5" width="8" height="1"/></svg>
+        </button>
+        <button class="win-btn close" onclick={closeWindow} title="Close">
+          <svg width="12" height="12" viewBox="0 0 12 12"><path fill="currentColor" d="M2.5,2.5 L9.5,9.5 M9.5,2.5 L2.5,9.5" stroke="currentColor" stroke-width="1.2"/></svg>
+        </button>
+      </div>
+    </div>
   </header>
 
   <nav class="tabs">
@@ -222,6 +241,47 @@
     opacity: 0.8;
     font-family: var(--font-mono);
     text-transform: uppercase;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .window-controls {
+    display: flex;
+    gap: 4px;
+    margin-right: -4px;
+  }
+
+  .win-btn {
+    appearance: none;
+    background: transparent;
+    border: none;
+    padding: 6px;
+    border-radius: 6px;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+  }
+
+  .win-btn:hover {
+    background: var(--bg-active);
+    color: var(--primary);
+    box-shadow: 0 0 8px var(--primary-glow);
+  }
+
+  .win-btn.close:hover {
+    color: var(--error);
+    box-shadow: 0 0 8px var(--error-glow);
+  }
+
+  .brand, h1 {
+    cursor: default;
   }
 
   /* Basic tab styling */
