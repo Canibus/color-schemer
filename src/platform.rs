@@ -103,6 +103,36 @@ pub mod windows {
 
     #[cfg(not(feature = "app"))]
     pub fn show_notification(_title: &str, _message: &str) {}
+
+    // ==========================
+    // Windows auto-start helper
+    // ==========================
+
+    pub fn update_auto_start(enabled: bool) -> Result<(), String> {
+        use winreg::enums::*;
+        use winreg::RegKey;
+
+        let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+        let path = "Software\\Microsoft\\Windows\\CurrentVersion\\Run";
+
+        if enabled {
+            let key = hkcu
+                .open_subkey_with_flags(path, KEY_WRITE)
+                .or_else(|_| hkcu.create_subkey(path).map(|(k, _)| k))
+                .map_err(|e| format!("Failed to open/create Run key: {}", e))?;
+
+            let exe_path = std::env::current_exe()
+                .map_err(|e| format!("Failed to get current exe path: {}", e))?;
+
+            key.set_value("color-schemer", &exe_path.to_str().unwrap_or_default())
+                .map_err(|e| format!("Failed to set registry value: {}", e))?;
+        } else {
+            if let Ok(key) = hkcu.open_subkey_with_flags(path, KEY_WRITE) {
+                let _ = key.delete_value("color-schemer");
+            }
+        }
+        Ok(())
+    }
 }
 
 #[cfg(not(windows))]
@@ -114,5 +144,9 @@ pub mod windows {
     }
 
     pub fn show_notification(_title: &str, _message: &str) {}
+
+    pub fn update_auto_start(_enabled: bool) -> Result<(), String> {
+        Ok(())
+    }
 }
 
