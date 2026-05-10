@@ -3,7 +3,6 @@ use log::info;
 use serde;
 use std::ffi::c_void;
 use std::mem;
-use thiserror::Error;
 
 use crate::platform;
 
@@ -103,19 +102,28 @@ type NvAPI_SetDVCLevel_t = unsafe extern "C" fn(usize, u32, i32) -> NvAPI_Status
 // Errors
 // ============================================================================
 
-#[derive(Error, Debug)]
+#[derive(Debug)]
 pub enum NvError {
-    #[error("NVAPI error {0}")]
     Status(NvAPI_Status),
-    #[error("Library load error: {0}")]
     Library(String),
-    #[error("Function 0x{0:08X} not found")]
     NotFound(u32),
-    #[error("OS error: {0}")]
     Os(String),
-    #[error("Not supported on this platform")]
     NotSupported,
 }
+
+impl std::fmt::Display for NvError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            NvError::Status(s) => write!(f, "NVAPI Error ({}): {}", s, nvapi_status_to_string(*s)),
+            NvError::Library(s) => write!(f, "Library load error: {}", s),
+            NvError::NotFound(id) => write!(f, "Function 0x{:08X} not found", id),
+            NvError::Os(s) => write!(f, "OS error: {}", s),
+            NvError::NotSupported => write!(f, "Not supported on this platform"),
+        }
+    }
+}
+
+impl std::error::Error for NvError {}
 
 pub type NvResult<T> = Result<T, NvError>;
 
