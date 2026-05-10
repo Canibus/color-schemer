@@ -274,7 +274,8 @@
     gap: 10px; 
   }
   .hotkey-item span { 
-    font-size: 14px; 
+    font-size: 13px; 
+    font-family: var(--font-mono);
   }
   .hotkey-item button {
     background: var(--bg-surface);
@@ -309,10 +310,56 @@
   .checkbox-label { 
     display: flex; 
     align-items: center; 
-    gap: 10px; 
-    font-size: 14px; 
+    gap: 12px; 
+    font-size: 13px; 
     cursor: pointer; 
+    font-family: var(--font-mono);
+    color: var(--text-main);
+    user-select: none;
+    transition: all 0.2s;
   }
+  .checkbox-label:hover {
+    color: var(--primary);
+  }
+  
+  /* Custom Toggle Styling */
+  .checkbox-label input {
+    appearance: none;
+    width: 32px;
+    height: 18px;
+    background: var(--bg-surface);
+    border: 1px solid var(--primary-dim);
+    border-radius: 10px;
+    position: relative;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: inset 0 2px 5px rgba(0,0,0,0.5);
+  }
+
+  .checkbox-label input:checked {
+    background: var(--primary-dim);
+    border-color: var(--primary);
+    box-shadow: 0 0 10px var(--primary-glow), inset 0 2px 5px rgba(0,0,0,0.2);
+  }
+
+  .checkbox-label input::before {
+    content: '';
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background: var(--text-muted);
+    border-radius: 50%;
+    top: 3px;
+    left: 4px;
+    transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .checkbox-label input:checked::before {
+    background: var(--primary);
+    transform: translateX(12px);
+    box-shadow: 0 0 5px var(--primary-glow);
+  }
+
   .actions { 
     display: flex; 
     justify-content: flex-end; 
