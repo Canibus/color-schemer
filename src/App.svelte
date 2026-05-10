@@ -23,7 +23,15 @@
   }
 
   function closeWindow() {
-    appWindow.close();
+    // For tray apps, "close" usually means hide to tray
+    appWindow.hide();
+  }
+
+  function startDragging(e: MouseEvent) {
+    // Only drag if we didn't click a button or interactive element
+    if (e.button === 0 && !(e.target as HTMLElement).closest('button')) {
+      appWindow.startDragging();
+    }
   }
 
   async function loadState() {
@@ -134,6 +142,7 @@
 </script>
 
 <main class="container">
+  <div class="drag-handle" data-tauri-drag-region></div>
   <header class="header" data-tauri-drag-region>
     <div class="brand" data-tauri-drag-region>
       <img src="/icon.svg" alt="" class="logo" />
@@ -208,6 +217,16 @@
     display: grid;
     gap: 14px;
     user-select: none;
+    position: relative;
+  }
+
+  .drag-handle {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    z-index: 0;
   }
 
   .header {
@@ -216,7 +235,15 @@
     justify-content: space-between;
     gap: 12px;
     padding-bottom: 5px;
+    position: relative;
+    z-index: 1;
+    pointer-events: none;
   }
+  
+  .brand, .header-right {
+    pointer-events: auto;
+  }
+
   .brand {
     display: flex;
     align-items: center;
