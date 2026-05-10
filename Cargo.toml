@@ -25,7 +25,6 @@ log = "0.4"
 env_logger = "0.11"
 
 crossbeam-channel = "0.5"
-thiserror = "2.0.18"
 sys-locale = "0.3"
 
 # Windows-only dependencies
