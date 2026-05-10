@@ -31,6 +31,29 @@ pub const NVAPI_EXPECTED_PHYSICAL_GPU_HANDLE: NvAPI_Status = -101;
 pub const NVAPI_EXPECTED_DISPLAY_HANDLE: NvAPI_Status = -102;
 pub const NVAPI_NOT_SUPPORTED: NvAPI_Status = -148;
 
+pub fn nvapi_status_to_string(status: NvAPI_Status) -> &'static str {
+    match status {
+        NVAPI_OK => "Success",
+        NVAPI_ERROR => "Generic error",
+        NVAPI_LIBRARY_NOT_FOUND => "NVAPI library not found",
+        NVAPI_NO_IMPLEMENTATION => "Function not implemented",
+        NVAPI_API_NOT_INITIALIZED => "NVAPI not initialized",
+        NVAPI_INVALID_ARGUMENT => "Invalid argument",
+        NVAPI_NVIDIA_DEVICE_NOT_FOUND => "NVIDIA device not found",
+        NVAPI_END_ENUMERATION => "End of enumeration",
+        NVAPI_INVALID_HANDLE => "Invalid handle",
+        NVAPI_INCOMPATIBLE_STRUCT_VERSION => "Incompatible structure version",
+        NVAPI_HANDLE_INVALIDATED => "Handle invalidated",
+        NVAPI_OPENGL_CONTEXT_NOT_CURRENT => "OpenGL context not current",
+        NVAPI_INVALID_POINTER => "Invalid pointer",
+        NVAPI_EXPECTED_LOGICAL_GPU_HANDLE => "Expected logical GPU handle",
+        NVAPI_EXPECTED_PHYSICAL_GPU_HANDLE => "Expected physical GPU handle",
+        NVAPI_EXPECTED_DISPLAY_HANDLE => "Expected display handle",
+        NVAPI_NOT_SUPPORTED => "Not supported",
+        _ => "Unknown NVAPI error",
+    }
+}
+
 const NV_DISPLAY_DVC_INFO_VER: u32 = 0x10010;
 
 #[repr(C)]
