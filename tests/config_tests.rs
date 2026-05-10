@@ -19,6 +19,7 @@ fn test_default_config() {
     let config = AppConfig::default();
     assert!(config.show_notifications);
     assert!(!config.start_minimized);
+    assert!(config.auto_start);
     assert_eq!(config.profiles.len(), 3);
     assert_eq!(config.hotkeys.next_profile, "Ctrl+Shift+F5");
     // This will fail to compile until 'language' field is added
@@ -84,6 +85,7 @@ fn test_load_valid_config() {
 language = "en"
 show_notifications = false
 start_minimized = true
+auto_start = false
 
 [hotkeys]
 next_profile = "Ctrl+F1"
@@ -107,11 +109,22 @@ digital_vibrance = 42
     assert_eq!(config.language, "en");
     assert!(!config.show_notifications);
     assert!(config.start_minimized);
+    assert!(!config.auto_start);
     assert_eq!(config.profiles.len(), 1);
     assert_eq!(config.profiles[0].name, "TestProfile");
     assert_eq!(config.profiles[0].settings.brightness, 1.5);
     assert_eq!(config.profiles[0].settings.digital_vibrance, 42);
     assert_eq!(config.hotkeys.next_profile, "Ctrl+F1");
+}
+
+#[test]
+fn test_load_config_missing_auto_start_defaults_to_true() {
+    let content = r#"
+language = "en"
+"#;
+    let file = temp_config(content);
+    let config = AppConfig::load_from(file.path());
+    assert!(config.auto_start);
 }
 
 #[test]
