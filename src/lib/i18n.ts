@@ -13,17 +13,17 @@ export class I18nManager {
       "editor.brightness": "Brightness",
       "editor.contrast": "Contrast",
       "editor.gamma": "Gamma",
-      "editor.vibrance": "Vibrance (NV)",
+      "editor.vibrance": "Digital Vibrance",
       "editor.save": "Save",
       "editor.cancel": "Cancel",
       "settings.hotkeys": "Hotkeys",
       "settings.language": "Language",
-      "settings.notifications": "Notifications",
+      "settings.notifications": "Show Notifications",
       "settings.minimized": "Start Minimized",
       "settings.save": "Save Changes",
       "hotkey.next": "Next Profile",
       "hotkey.prev": "Previous Profile",
-      "hotkey.reset": "Reset",
+      "hotkey.reset": "Reset to Default",
       "hotkey.recording": "Recording... Press keys"
     },
     ru: {
@@ -54,6 +54,12 @@ export class I18nManager {
 
   t(key: string): string {
     return this.translations[this.currentLang]?.[key] ?? key;
+  }
+
+  setLanguage(lang: string) {
+    if (this.translations[lang]) {
+      this.currentLang = lang;
+    }
   }
 }
 
