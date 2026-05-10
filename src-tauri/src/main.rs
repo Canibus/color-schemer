@@ -112,15 +112,21 @@ fn get_config(state: tauri::State<'_, AppState>) -> Result<AppConfig, String> {
 
 #[tauri::command]
 fn save_config(state: tauri::State<'_, AppState>, app_handle: tauri::AppHandle, updated: AppConfig) -> Result<(), String> {
+    // Get current config to check for changes
+    let (lang_changed, auto_start_changed) = {
+        let cfg = lock_cfg(&state.config);
+        (cfg.language != updated.language, cfg.auto_start != updated.auto_start)
+    };
+
+    // Update registry if auto_start changed
+    if auto_start_changed {
+        color_schemer::platform::windows::update_auto_start(updated.auto_start)?;
+    }
+
     // Persist to config.toml (next to executable) using core implementation.
     updated.save();
 
     // Update tray menu if language changed
-    let lang_changed = {
-        let cfg = lock_cfg(&state.config);
-        cfg.language != updated.language
-    };
-
     if lang_changed {
         let tray_handle = app_handle.tray_handle();
         let _ = tray_handle.get_item("quit").set_title(color_schemer::i18n::t(&updated.language, "tray.quit"));
