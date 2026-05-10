@@ -169,6 +169,10 @@
               {i18n.t('settings.notifications')}
           </label>
           <label class="checkbox-label">
+              <input type="checkbox" bind:checked={edited.auto_start} />
+              {i18n.t('settings.autostart')}
+          </label>
+          <label class="checkbox-label">
               <input type="checkbox" bind:checked={edited.start_minimized} />
               {i18n.t('settings.minimized')}
           </label>
