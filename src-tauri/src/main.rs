@@ -368,7 +368,7 @@ fn main() {
                 let nvidia_c = state.nvidia.clone();
                 let pm_c = state.pm.clone();
                 let asm_c = state.asm.clone();
-                let config_c = state.config.clone();
+                let _config_c = state.config.clone();
                 
                 std::thread::spawn(move || {
                     loop {
@@ -399,17 +399,6 @@ fn main() {
                                         
                                         // Notify frontend
                                         let _ = handle.emit_all("profile-changed", ProfileChangedPayload { index: target_index });
-                                        
-                                        let (show_notif, lang) = {
-                                            let cfg = config_c.lock().unwrap();
-                                            (cfg.show_notifications, cfg.language.clone())
-                                        };
-                                        if show_notif {
-                                            color_schemer::platform::windows::show_notification(
-                                                color_schemer::i18n::t(&lang, "notif.title_auto"),
-                                                &color_schemer::i18n::t(&lang, "notif.body").replace("{}", &process_name),
-                                            );
-                                        }
                                     }
                                 }
                             }
@@ -519,17 +508,6 @@ fn main() {
 
                                         // Notify frontend
                                         let _ = handle.emit_all("profile-changed", ProfileChangedPayload { index });
-
-                                        let (show_notif, lang) = {
-                                            let cfg = config_c.lock().unwrap();
-                                            (cfg.show_notifications, cfg.language.clone())
-                                        };
-                                        if show_notif {
-                                            color_schemer::platform::windows::show_notification(
-                                                color_schemer::i18n::t(&lang, "notif.title"),
-                                                &color_schemer::i18n::t(&lang, "notif.body").replace("{}", &profile.name),
-                                            );
-                                        }
                                     }
                                 }
                             }

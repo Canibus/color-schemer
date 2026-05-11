@@ -29,7 +29,6 @@ sys-locale = "0.3"
 
 # Windows-only dependencies
 [target.'cfg(windows)'.dependencies]
-winrt-notification = { version = "0.5", optional = true }
 winreg = "0.52"
 
 [dev-dependencies]
@@ -42,7 +41,6 @@ cc = "1"
 [features]
 default = ["app"]
 # Enables the original tray + hotkey Windows utility (binary).
-app = ["hotkeys", "tray", "notifications"]
+app = ["hotkeys", "tray"]
 hotkeys = ["dep:global-hotkey"]
 tray = ["dep:tray-icon"]
-notifications = ["dep:winrt-notification"]

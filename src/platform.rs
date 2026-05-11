@@ -504,25 +504,6 @@ pub mod windows {
     }
 
     // ==========================
-    // Windows toast notification
-    // ==========================
-
-    #[cfg(feature = "app")]
-    pub fn show_notification(title: &str, message: &str) {
-        use winrt_notification::Toast;
-
-        // Best-effort only: ignore failures to avoid crashing the resident app.
-        let _ = Toast::new(Toast::POWERSHELL_APP_ID)
-            .title(title)
-            .text1(message)
-            .duration(winrt_notification::Duration::Short)
-            .show();
-    }
-
-    #[cfg(not(feature = "app"))]
-    pub fn show_notification(_title: &str, _message: &str) {}
-
-    // ==========================
     // Windows auto-start helper
     // ==========================
 

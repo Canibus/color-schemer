@@ -27,7 +27,6 @@ impl Default for HotkeyConfig {
 pub struct AppConfig {
     pub language: String,
     pub hotkeys: HotkeyConfig,
-    pub show_notifications: bool,
     pub start_minimized: bool,
     pub auto_start: bool,
     pub profiles: Vec<DisplayProfile>,
@@ -111,7 +110,6 @@ impl Default for AppConfig {
         Self {
             language,
             hotkeys: HotkeyConfig::default(),
-            show_notifications: true,
             start_minimized: false,
             auto_start: true,
             profiles,

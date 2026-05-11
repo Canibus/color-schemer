@@ -31,11 +31,10 @@ export type HotkeyConfig = {
     reset: string;
 };
 
-export type AppConfig = {
+export interface AppConfig {
     language: string;
     hotkeys: HotkeyConfig;
-    show_notifications: boolean;
     start_minimized: boolean;
     auto_start: boolean;
     profiles: DisplayProfile[];
-};
+}

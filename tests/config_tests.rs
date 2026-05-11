@@ -17,7 +17,6 @@ fn temp_config(content: &str) -> tempfile::NamedTempFile {
 #[test]
 fn test_default_config() {
     let config = AppConfig::default();
-    assert!(config.show_notifications);
     assert!(!config.start_minimized);
     assert!(config.auto_start);
     assert_eq!(config.profiles.len(), 3);
@@ -63,7 +62,6 @@ fn test_toml_roundtrip() {
     let restored: AppConfig = toml::from_str(&toml_str).unwrap();
 
     assert_eq!(config.profiles.len(), restored.profiles.len());
-    assert_eq!(config.show_notifications, restored.show_notifications);
 }
 
 #[test]
@@ -107,7 +105,6 @@ digital_vibrance = 42
     let config = AppConfig::load_from(file.path());
 
     assert_eq!(config.language, "en");
-    assert!(!config.show_notifications);
     assert!(config.start_minimized);
     assert!(!config.auto_start);
     assert_eq!(config.profiles.len(), 1);
@@ -133,7 +130,6 @@ fn test_load_invalid_toml_returns_default() {
     let config = AppConfig::load_from(file.path());
 
     assert_eq!(config.profiles.len(), 3);
-    assert!(config.show_notifications);
 }
 
 #[test]
@@ -159,7 +155,6 @@ fn test_save_and_reload() {
     let path = dir.path().join("test_config.toml");
 
     let mut config = AppConfig::default();
-    config.show_notifications = false;
     config.profiles.push(DisplayProfile::new(
         "Extra",
         "Extra profile",
@@ -175,7 +170,6 @@ fn test_save_and_reload() {
 
     let loaded = AppConfig::load_from(&path);
     assert_eq!(loaded.language, config.language);
-    assert!(!loaded.show_notifications);
     assert_eq!(loaded.profiles.len(), 4);
     assert_eq!(loaded.profiles[3].name, "Extra");
     assert_eq!(loaded.profiles[3].settings.brightness, 1.8);

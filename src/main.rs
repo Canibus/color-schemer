@@ -35,7 +35,6 @@ fn apply_profile_internal(
     index: usize,
     nvidia: &NvidiaController,
     pm_arc: &Arc<Mutex<ProfileManager>>,
-    show_notif: bool,
     is_auto: bool,
 ) {
     let mut pm = lock_profile_manager(pm_arc);
@@ -61,16 +60,6 @@ fn apply_profile_internal(
                     if is_auto { " (авто)" } else { "" },
                     name
                 );
-                if show_notif {
-                    platform::windows::show_notification(
-                        if is_auto {
-                            "Авто-переключение"
-                        } else {
-                            "Профиль изменён"
-                        },
-                        &format!("Активный профиль: {}", name),
-                    );
-                }
             }
             Err(e) => error!("Ошибка применения профиля '{}': {}", name, e),
         }
@@ -82,7 +71,6 @@ fn handle_action(
     nvidia: &NvidiaController,
     profile_manager: &Arc<Mutex<ProfileManager>>,
     auto_switch_manager: &Arc<Mutex<AutoSwitchManager>>,
-    show_notifications: bool,
 ) {
     let index = {
         let mut pm = lock_profile_manager(profile_manager);
@@ -106,7 +94,7 @@ fn handle_action(
     asm.handle_manual_switch(index);
     drop(asm);
 
-    apply_profile_internal(index, nvidia, profile_manager, show_notifications, false);
+    apply_profile_internal(index, nvidia, profile_manager, false);
 }
 
 fn handle_menu_event(
@@ -114,7 +102,6 @@ fn handle_menu_event(
     nvidia: &NvidiaController,
     pm: &Arc<Mutex<ProfileManager>>,
     asm: &Arc<Mutex<AutoSwitchManager>>,
-    show_notif: bool,
 ) -> bool {
     match id {
         "quit" => {
@@ -123,13 +110,13 @@ fn handle_menu_event(
             return true; // сигнал на выход
         }
         "next_profile" => {
-            handle_action(HotkeyAction::NextProfile, nvidia, pm, asm, show_notif);
+            handle_action(HotkeyAction::NextProfile, nvidia, pm, asm);
         }
         "prev_profile" => {
-            handle_action(HotkeyAction::PrevProfile, nvidia, pm, asm, show_notif);
+            handle_action(HotkeyAction::PrevProfile, nvidia, pm, asm);
         }
         "reset" => {
-            handle_action(HotkeyAction::Reset, nvidia, pm, asm, show_notif);
+            handle_action(HotkeyAction::Reset, nvidia, pm, asm);
         }
         other if other.starts_with("profile_") => {
             if let Ok(index) = other.trim_start_matches("profile_").parse::<usize>() {
@@ -137,7 +124,7 @@ fn handle_menu_event(
                 asm_lock.handle_manual_switch(index);
                 drop(asm_lock);
 
-                apply_profile_internal(index, nvidia, pm, show_notif, false);
+                apply_profile_internal(index, nvidia, pm, false);
             }
         }
         _ => {}
@@ -194,7 +181,6 @@ fn main() {
         }
         Err(e) => {
             error!("Ошибка инициализации NVIDIA: {}", e);
-            platform::windows::show_notification("Ошибка", &format!("NVIDIA init failed: {}", e));
             return;
         }
     };
@@ -207,7 +193,7 @@ fn main() {
     let auto_switch_manager = Arc::new(Mutex::new(AutoSwitchManager::new(initial_index)));
 
     // Применяем начальный профиль
-    let initial_profile_name = {
+    let _initial_profile_name = {
         let pm = lock_profile_manager(&profile_manager);
         let profile = pm.current_profile();
         info!("Начальный профиль: {}", profile.name);
@@ -226,14 +212,6 @@ fn main() {
         }
         profile.name.clone()
     };
-
-    let show_notif = config.show_notifications;
-    if show_notif && !config.start_minimized {
-        platform::windows::show_notification(
-            "NVIDIA Profile Switcher",
-            &format!("Запущено. Активный профиль: {}", initial_profile_name),
-        );
-    }
 
     // Регистрируем хоткеи В ГЛАВНОМ ПОТОКЕ
     let hotkey_controller = match HotkeyController::new(&config.hotkeys) {
@@ -293,7 +271,6 @@ fn main() {
                         target_index,
                         &nvidia,
                         &profile_manager,
-                        show_notif,
                         true,
                     );
                 }
@@ -312,7 +289,6 @@ fn main() {
                         &nvidia,
                         &profile_manager,
                         &auto_switch_manager,
-                        show_notif,
                     );
                 }
             }
@@ -327,7 +303,6 @@ fn main() {
                 &nvidia,
                 &profile_manager,
                 &auto_switch_manager,
-                show_notif,
             ) {
                 should_quit = true;
                 break;
