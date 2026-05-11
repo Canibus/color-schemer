@@ -187,15 +187,13 @@ fn save_config(state: tauri::State<'_, AppState>, app_handle: tauri::AppHandle, 
     };
 
     // 2. Get current config to check for changes
-    let (lang_changed, auto_start_changed) = {
+    let lang_changed = {
         let cfg = lock_cfg(&state.config);
-        (cfg.language != updated.language, cfg.auto_start != updated.auto_start)
+        cfg.language != updated.language
     };
 
-    // Update registry if auto_start changed
-    if auto_start_changed {
-        color_schemer::platform::windows::update_auto_start(updated.auto_start)?;
-    }
+    // Update registry (it handles checking for changes internally)
+    color_schemer::platform::windows::update_auto_start(updated.auto_start)?;
 
     // Persist to config.toml (next to executable) using core implementation.
     updated.save();
@@ -360,7 +358,11 @@ fn main() {
             let app_handle = app.handle();
             let state = app.state::<AppState>();
             
-            // Background focus watcher thread
+            // Ensure auto-start registry key matches config (especially on first launch or if exe moved)
+            {
+                let cfg = lock_cfg(&state.config);
+                let _ = color_schemer::platform::windows::update_auto_start(cfg.auto_start);
+            }
             {
                 let handle = app_handle.clone();
                 let nvidia_c = state.nvidia.clone();

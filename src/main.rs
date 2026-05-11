@@ -184,6 +184,9 @@ fn main() {
     let config = AppConfig::load();
     info!("Загружено {} профилей", config.profiles.len());
 
+    // Ensure auto-start registry key matches config (especially on first launch or if exe moved)
+    let _ = platform::windows::update_auto_start(config.auto_start);
+
     let nvidia = match NvidiaController::new() {
         Ok(ctrl) => {
             info!("NVIDIA контроллер инициализирован");

@@ -1,6 +1,7 @@
 #[cfg(windows)]
 pub mod windows {
     use std::ffi::c_void;
+    use log::info;
 
     // ==========================
     // WinAPI: message pump
@@ -535,9 +536,10 @@ pub mod windows {
         if enabled {
             if cfg!(debug_assertions) {
                 // In debug mode, we usually don't want to register for auto-start 
-                // because it might point to a transient build and cause issues at boot 
-                // (e.g. console opening, connecting to non-existent dev server).
-                return Err("Auto-start cannot be enabled in debug mode to prevent startup issues. Please use a release build.".to_string());
+                // because it might point to a transient build and cause issues at boot.
+                // We return Ok(()) here to avoid error popups during development.
+                info!("Auto-start registration skipped in debug mode.");
+                return Ok(());
             }
 
             let key = hkcu
@@ -553,11 +555,22 @@ pub mod windows {
                 path_str = format!("\"{}\"", path_str);
             }
 
+            // Check if already correctly registered to avoid unnecessary writes
+            let existing: String = key.get_value("color-schemer").unwrap_or_default();
+            if existing == path_str {
+                return Ok(());
+            }
+
             key.set_value("color-schemer", &path_str)
                 .map_err(|e| format!("Failed to set registry value: {}", e))?;
+            
+            info!("Auto-start registered: {}", path_str);
         } else {
             if let Ok(key) = hkcu.open_subkey_with_flags(path, KEY_WRITE) {
-                let _ = key.delete_value("color-schemer");
+                if key.get_value::<String, _>("color-schemer").is_ok() {
+                    let _ = key.delete_value("color-schemer");
+                    info!("Auto-start unregistered.");
+                }
             }
         }
         Ok(())
