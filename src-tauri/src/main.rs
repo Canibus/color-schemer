@@ -176,7 +176,13 @@ fn get_config(state: tauri::State<'_, AppState>) -> Result<AppConfig, String> {
 
 #[tauri::command]
 fn save_config(state: tauri::State<'_, AppState>, app_handle: tauri::AppHandle, updated: AppConfig) -> Result<(), String> {
-    // Get current config to check for changes
+    // 1. Capture the name of the currently active profile
+    let active_profile_name = {
+        let pm = lock_pm(&state.pm);
+        pm.current_profile().name.clone()
+    };
+
+    // 2. Get current config to check for changes
     let (lang_changed, auto_start_changed) = {
         let cfg = lock_cfg(&state.config);
         (cfg.language != updated.language, cfg.auto_start != updated.auto_start)
@@ -208,10 +214,24 @@ fn save_config(state: tauri::State<'_, AppState>, app_handle: tauri::AppHandle, 
         *cfg = updated.clone();
     }
 
-    // Replace profile manager profiles with the new config’s profiles.
+    // 3. Replace profile manager profiles and restore active profile by name
     {
         let mut pm = lock_pm(&state.pm);
         *pm = ProfileManager::new(updated.profiles.clone());
+        
+        // Restore the previously active profile by name, or fallback to index 0
+        pm.set_profile_by_name(&active_profile_name);
+        
+        let profile = pm.current_profile();
+        let settings = &profile.settings;
+        if profile.target_displays.is_empty() {
+            state.nvidia.apply_display_settings(None, settings).map_err(|e| e.to_string())?;
+        } else {
+            for id in &profile.target_displays {
+                let _ = state.nvidia.apply_display_settings(Some(id), settings);
+            }
+        }
+        info!("Restored active profile '{}' after config save", profile.name);
     }
 
     Ok(())

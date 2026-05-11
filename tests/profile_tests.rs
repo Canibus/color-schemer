@@ -137,6 +137,20 @@ fn test_set_profile_boundary() {
     assert!(pm.set_profile(3).is_none());
 }
 
+#[test]
+fn test_set_profile_by_name() {
+    let mut pm = ProfileManager::new(make_profiles(3));
+
+    assert!(pm.set_profile_by_name("Profile 1").is_some());
+    assert_eq!(pm.current_index(), 1);
+
+    assert!(pm.set_profile_by_name("Profile 2").is_some());
+    assert_eq!(pm.current_index(), 2);
+
+    assert!(pm.set_profile_by_name("Non-existent").is_none());
+    assert_eq!(pm.current_index(), 2); // should not change
+}
+
 // ============================================================
 // Добавление / удаление
 // ============================================================

@@ -87,13 +87,8 @@
           newProfiles[editingIndex] = updatedProfile;
           const newConfig = { ...config, profiles: newProfiles };
           
-          // Save to backend
+          // Save to backend - it will now automatically re-apply the last active profile by name
           await invoke("save_config", { updated: newConfig });
-          
-          // If we edited the currently active profile, apply it properly to update backend state
-          if (editingIndex === activeIndex) {
-              await invoke("apply_profile", { index: editingIndex });
-          }
           
           await loadState();
           editingIndex = null;

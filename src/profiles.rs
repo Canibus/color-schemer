@@ -76,6 +76,15 @@ impl ProfileManager {
         }
     }
 
+    pub fn set_profile_by_name(&mut self, name: &str) -> Option<&DisplayProfile> {
+        if let Some(index) = self.profiles.iter().position(|p| p.name == name) {
+            self.current_index = index;
+            Some(&self.profiles[index])
+        } else {
+            None
+        }
+    }
+
     pub fn profiles(&self) -> &[DisplayProfile] {
         &self.profiles
     }
