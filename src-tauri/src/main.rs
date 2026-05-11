@@ -26,7 +26,6 @@ unsafe extern "system" fn win_event_proc(
     _dw_ms_event_time: u32,
 ) {
     FOREGROUND_CHANGED.store(true, Ordering::SeqCst);
-    platform::windows::wake_message_loop();
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
