@@ -263,6 +263,15 @@ use tauri::{CustomMenuItem, Manager, SystemTray, SystemTrayEvent, SystemTrayMenu
 fn main() {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
 
+    // Ensure only one instance is running
+    let _instance = match color_schemer::platform::windows::SingleInstance::new("Global\\ColorSchemerMutex") {
+        Some(inst) => inst,
+        None => {
+            error!("Another instance of color-schemer is already running.");
+            return;
+        }
+    };
+
     if !cfg!(windows) {
         eprintln!("color-schemer is currently Windows-only");
         std::process::exit(1);

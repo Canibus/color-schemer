@@ -69,6 +69,43 @@ pub mod windows {
         fn CreateToolhelp32Snapshot(dw_flags: u32, th32_process_id: u32) -> *mut c_void;
         fn Process32FirstW(h_snapshot: *mut c_void, lppe: *mut PROCESSENTRY32W) -> i32;
         fn Process32NextW(h_snapshot: *mut c_void, lppe: *mut PROCESSENTRY32W) -> i32;
+        fn CreateMutexW(lp_mutex_attributes: *mut c_void, b_initial_owner: i32, lp_name: *const u16) -> *mut c_void;
+        fn GetLastError() -> u32;
+    }
+
+    const ERROR_ALREADY_EXISTS: u32 = 183;
+
+    pub struct SingleInstance {
+        handle: *mut c_void,
+    }
+
+    impl SingleInstance {
+        pub fn new(name: &str) -> Option<Self> {
+            unsafe {
+                let name_u16: Vec<u16> = name.encode_utf16().chain(std::iter::once(0)).collect();
+                let handle = CreateMutexW(std::ptr::null_mut(), 1, name_u16.as_ptr());
+                if handle.is_null() {
+                    return None;
+                }
+
+                if GetLastError() == ERROR_ALREADY_EXISTS {
+                    CloseHandle(handle);
+                    return None;
+                }
+
+                Some(Self { handle })
+            }
+        }
+    }
+
+    impl Drop for SingleInstance {
+        fn drop(&mut self) {
+            unsafe {
+                if !self.handle.is_null() {
+                    CloseHandle(self.handle);
+                }
+            }
+        }
     }
 
     #[repr(C)]
@@ -533,5 +570,12 @@ pub mod windows {
 
     pub fn update_auto_start(_enabled: bool) -> Result<(), String> {
         Ok(())
+    }
+
+    pub struct SingleInstance;
+    impl SingleInstance {
+        pub fn new(_name: &str) -> Option<Self> {
+            Some(Self)
+        }
     }
 }

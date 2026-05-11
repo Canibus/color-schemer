@@ -170,6 +170,15 @@ fn lock_auto_switch_manager(
 fn main() {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
 
+    // Ensure only one instance is running
+    let _instance = match platform::windows::SingleInstance::new("Global\\ColorSchemerMutex") {
+        Some(inst) => inst,
+        None => {
+            error!("Another instance of color-schemer is already running.");
+            return;
+        }
+    };
+
     info!("=== NVIDIA Profile Switcher ===");
 
     let config = AppConfig::load();
