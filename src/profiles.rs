@@ -16,11 +16,20 @@ pub struct DisplayProfile {
 impl DisplayProfile {
     pub fn new(name: &str, description: &str, settings: DisplaySettings) -> Self {
         Self {
-            name: name.to_string(),
-            description: description.to_string(),
+            name: name.chars().take(32).collect(),
+            description: description.chars().take(32).collect(),
             settings,
             target_displays: Vec::new(),
             applications: Vec::new(),
+        }
+    }
+
+    pub fn sanitize(&mut self) {
+        if self.name.chars().count() > 32 {
+            self.name = self.name.chars().take(32).collect();
+        }
+        if self.description.chars().count() > 32 {
+            self.description = self.description.chars().take(32).collect();
         }
     }
 }

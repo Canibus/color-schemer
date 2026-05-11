@@ -303,3 +303,28 @@ fn test_profile_applications() {
     assert_eq!(restored.applications.len(), 1);
     assert_eq!(restored.applications[0], "Notepad.exe");
 }
+
+#[test]
+fn test_profile_name_truncation() {
+    let settings = DisplaySettings::default();
+    let long_name = "A".repeat(33);
+    let profile = DisplayProfile::new(&long_name, "desc", settings);
+    assert_eq!(profile.name.chars().count(), 32);
+}
+
+#[test]
+fn test_profile_description_truncation() {
+    let settings = DisplaySettings::default();
+    let long_desc = "B".repeat(33);
+    let profile = DisplayProfile::new("name", &long_desc, settings);
+    assert_eq!(profile.description.chars().count(), 32);
+}
+
+#[test]
+fn test_profile_sanitize_utf8() {
+    let mut profile = DisplayProfile::new("name", "desc", DisplaySettings::default());
+    // 33 Cyrillic characters
+    profile.name = "Ф".repeat(33); 
+    profile.sanitize();
+    assert_eq!(profile.name.chars().count(), 32);
+}
