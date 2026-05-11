@@ -82,7 +82,15 @@ pub mod windows {
     impl SingleInstance {
         pub fn new(name: &str) -> Option<Self> {
             unsafe {
-                let name_u16: Vec<u16> = name.encode_utf16().chain(std::iter::once(0)).collect();
+                // Ensure name has a prefix if it doesn't already. 
+                // Using 'Local\' is safer for per-user apps as it doesn't require SeCreateGlobalPrivilege.
+                let full_name = if name.starts_with("Global\\") || name.starts_with("Local\\") {
+                    name.to_string()
+                } else {
+                    format!("Local\\{}", name)
+                };
+
+                let name_u16: Vec<u16> = full_name.encode_utf16().chain(std::iter::once(0)).collect();
                 let handle = CreateMutexW(std::ptr::null_mut(), 1, name_u16.as_ptr());
                 if handle.is_null() {
                     return None;
@@ -525,6 +533,13 @@ pub mod windows {
         let path = "Software\\Microsoft\\Windows\\CurrentVersion\\Run";
 
         if enabled {
+            if cfg!(debug_assertions) {
+                // In debug mode, we usually don't want to register for auto-start 
+                // because it might point to a transient build and cause issues at boot 
+                // (e.g. console opening, connecting to non-existent dev server).
+                return Err("Auto-start cannot be enabled in debug mode to prevent startup issues. Please use a release build.".to_string());
+            }
+
             let key = hkcu
                 .open_subkey_with_flags(path, KEY_WRITE)
                 .or_else(|_| hkcu.create_subkey(path).map(|(k, _)| k))
@@ -533,7 +548,12 @@ pub mod windows {
             let exe_path = std::env::current_exe()
                 .map_err(|e| format!("Failed to get current exe path: {}", e))?;
 
-            key.set_value("color-schemer", &exe_path.to_str().unwrap_or_default())
+            let mut path_str = exe_path.to_str().unwrap_or_default().to_string();
+            if !path_str.starts_with('"') && path_str.contains(' ') {
+                path_str = format!("\"{}\"", path_str);
+            }
+
+            key.set_value("color-schemer", &path_str)
                 .map_err(|e| format!("Failed to set registry value: {}", e))?;
         } else {
             if let Ok(key) = hkcu.open_subkey_with_flags(path, KEY_WRITE) {
