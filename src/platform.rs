@@ -30,9 +30,116 @@ pub mod windows {
         fn TranslateMessage(msg: *const MSG) -> i32;
         fn DispatchMessageW(msg: *const MSG) -> isize;
         fn WaitMessage() -> i32;
+        fn GetForegroundWindow() -> *mut c_void;
+        fn GetWindowThreadProcessId(hwnd: *mut c_void, lpdw_process_id: *mut u32) -> u32;
+        fn EnumWindows(
+            lp_enum_func: unsafe extern "system" fn(*mut c_void, isize) -> i32,
+            l_param: isize,
+        ) -> i32;
+        fn IsWindowVisible(hwnd: *mut c_void) -> i32;
+        fn GetWindowTextW(hwnd: *mut c_void, lp_string: *mut u16, n_max_count: i32) -> i32;
+        fn GetWindowTextLengthW(hwnd: *mut c_void) -> i32;
+    }
+
+    #[link(name = "kernel32")]
+    unsafe extern "system" {
+        fn OpenProcess(dw_desired_access: u32, b_inherit_handle: i32, dw_process_id: u32) -> *mut c_void;
+        fn CloseHandle(h_object: *mut c_void) -> i32;
+    }
+
+    #[link(name = "psapi")]
+    unsafe extern "system" {
+        fn GetModuleFileNameExW(
+            h_process: *mut c_void,
+            h_module: *mut c_void,
+            lp_filename: *mut u16,
+            n_size: u32,
+        ) -> u32;
     }
 
     const PM_REMOVE: u32 = 0x0001;
+    const PROCESS_QUERY_INFORMATION: u32 = 0x0400;
+    const PROCESS_VM_READ: u32 = 0x0010;
+
+    #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+    pub struct ProcessInfo {
+        pub name: String,
+        pub title: String,
+    }
+
+    /// Get the executable name of the process owning the foreground window.
+    pub fn get_foreground_process_name() -> Option<String> {
+        unsafe {
+            let hwnd = GetForegroundWindow();
+            if hwnd.is_null() {
+                return None;
+            }
+
+            let mut process_id = 0;
+            GetWindowThreadProcessId(hwnd, &mut process_id);
+            if process_id == 0 {
+                return None;
+            }
+
+            get_process_name_from_id(process_id)
+        }
+    }
+
+    fn get_process_name_from_id(process_id: u32) -> Option<String> {
+        unsafe {
+            let handle = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, 0, process_id);
+            if handle.is_null() {
+                return None;
+            }
+
+            let mut buffer = [0u16; 1024];
+            let size = GetModuleFileNameExW(handle, std::ptr::null_mut(), buffer.as_mut_ptr(), 1024);
+            CloseHandle(handle);
+
+            if size > 0 {
+                let full_path = String::from_utf16_lossy(&buffer[..size as usize]);
+                // Return only the filename
+                std::path::Path::new(&full_path)
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .map(|s| s.to_string())
+            } else {
+                None
+            }
+        }
+    }
+
+    /// Get a list of running applications with visible windows.
+    pub fn get_running_apps() -> Vec<ProcessInfo> {
+        let mut apps = Vec::new();
+
+        unsafe extern "system" fn enum_windows_callback(hwnd: *mut c_void, l_param: isize) -> i32 {
+            let apps = unsafe { &mut *(l_param as *mut Vec<ProcessInfo>) };
+
+            if unsafe { IsWindowVisible(hwnd) } != 0 {
+                let length = unsafe { GetWindowTextLengthW(hwnd) };
+                if length > 0 {
+                    let mut buffer = vec![0u16; length as usize + 1];
+                    let size = unsafe { GetWindowTextW(hwnd, buffer.as_mut_ptr(), length + 1) };
+                    let title = String::from_utf16_lossy(&buffer[..size as usize]);
+
+                    let mut process_id = 0;
+                    unsafe { GetWindowThreadProcessId(hwnd, &mut process_id) };
+                    
+                    if let Some(name) = get_process_name_from_id(process_id) {
+                        apps.push(ProcessInfo { name, title });
+                    }
+                }
+            }
+            1
+        }
+
+        unsafe {
+            EnumWindows(enum_windows_callback, &mut apps as *mut _ as isize);
+        }
+
+        apps
+    }
 
     /// Process all pending Windows messages (non-blocking).
     pub fn pump_messages() {
@@ -275,6 +382,20 @@ pub mod windows {
 
 #[cfg(not(windows))]
 pub mod windows {
+    #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+    pub struct ProcessInfo {
+        pub name: String,
+        pub title: String,
+    }
+
+    pub fn get_foreground_process_name() -> Option<String> {
+        None
+    }
+
+    pub fn get_running_apps() -> Vec<ProcessInfo> {
+        Vec::new()
+    }
+
     pub fn pump_messages() {}
 
     pub fn set_device_gamma_ramp(_ramp: &[[u16; 256]; 3]) -> Result<(), String> {
