@@ -98,8 +98,6 @@
 <svelte:window onkeydown={handleKeyDown} />
 
 <div class="settings">
-  <h3>{i18n.t('settings.title')}</h3>
-  
   <div class="field-group">
       <div class="group-label">{i18n.t('settings.language')}</div>
       <div class="group-content">
@@ -189,12 +187,6 @@
     display: flex; 
     flex-direction: column; 
     gap: 15px; 
-  }
-  h3 { 
-    color: var(--primary); 
-    text-transform: uppercase; 
-    font-size: 16px; 
-    margin-top: 0; 
   }
   .field-group {
     background: var(--bg-layer);
