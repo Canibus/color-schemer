@@ -210,6 +210,11 @@ fn preview_settings(state: tauri::State<'_, AppState>, settings: DisplaySettings
     }
 }
 
+#[tauri::command]
+fn get_running_apps() -> Result<Vec<color_schemer::platform::windows::ProcessInfo>, String> {
+    Ok(color_schemer::platform::windows::get_running_apps())
+}
+
 use tauri::{CustomMenuItem, Manager, SystemTray, SystemTrayEvent, SystemTrayMenu, SystemTrayMenuItem};
 
 fn main() {
@@ -425,7 +430,8 @@ fn main() {
             get_config,
             save_config,
             preview_settings,
-            set_recording_mode
+            set_recording_mode,
+            get_running_apps
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

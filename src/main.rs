@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 #![cfg(windows)]
 
+use color_schemer::auto_switch::AutoSwitchManager;
 use color_schemer::config::AppConfig;
 use color_schemer::hotkey::{HotkeyAction, HotkeyController};
 use color_schemer::nvidia::{GpuController, NvidiaController};
@@ -10,67 +11,109 @@ use color_schemer::tray::TrayController;
 
 use global_hotkey::{GlobalHotKeyEvent, HotKeyState};
 use log::{error, info, warn};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::{Duration, Instant};
 use tray_icon::menu::MenuEvent;
+
+static FOREGROUND_CHANGED: AtomicBool = AtomicBool::new(true);
+
+unsafe extern "system" fn win_event_proc(
+    _h_win_event_hook: *mut std::ffi::c_void,
+    _event: u32,
+    _hwnd: *mut std::ffi::c_void,
+    _id_object: i32,
+    _id_child: i32,
+    _dw_event_thread: u32,
+    _dw_ms_event_time: u32,
+) {
+    FOREGROUND_CHANGED.store(true, Ordering::SeqCst);
+    platform::windows::wake_message_loop();
+}
+
+fn apply_profile_internal(
+    index: usize,
+    nvidia: &NvidiaController,
+    pm_arc: &Arc<Mutex<ProfileManager>>,
+    show_notif: bool,
+    is_auto: bool,
+) {
+    let mut pm = lock_profile_manager(pm_arc);
+    if let Some(profile) = pm.set_profile(index) {
+        let name = profile.name.clone();
+        let settings = profile.settings.clone();
+        let target_displays = profile.target_displays.clone();
+        drop(pm);
+
+        let res = if target_displays.is_empty() {
+            nvidia.apply_display_settings(None, &settings)
+        } else {
+            for id in &target_displays {
+                let _ = nvidia.apply_display_settings(Some(id), &settings);
+            }
+            Ok(())
+        };
+
+        match res {
+            Ok(()) => {
+                info!(
+                    "Профиль применён{}: {}",
+                    if is_auto { " (авто)" } else { "" },
+                    name
+                );
+                if show_notif {
+                    platform::windows::show_notification(
+                        if is_auto {
+                            "Авто-переключение"
+                        } else {
+                            "Профиль изменён"
+                        },
+                        &format!("Активный профиль: {}", name),
+                    );
+                }
+            }
+            Err(e) => error!("Ошибка применения профиля '{}': {}", name, e),
+        }
+    }
+}
 
 fn handle_action(
     action: HotkeyAction,
     nvidia: &NvidiaController,
     profile_manager: &Arc<Mutex<ProfileManager>>,
+    auto_switch_manager: &Arc<Mutex<AutoSwitchManager>>,
     show_notifications: bool,
 ) {
-    let mut pm = lock_profile_manager(profile_manager);
-
-    let (profile_name, settings, target_displays) = match action {
-        HotkeyAction::NextProfile => {
-            let profile = pm.next_profile();
-            (profile.name.clone(), profile.settings.clone(), profile.target_displays.clone())
-        }
-        HotkeyAction::PrevProfile => {
-            let profile = pm.prev_profile();
-            (profile.name.clone(), profile.settings.clone(), profile.target_displays.clone())
-        }
-        HotkeyAction::Reset => {
-            if let Some(profile) = pm.set_profile(0) {
-                (profile.name.clone(), profile.settings.clone(), profile.target_displays.clone())
-            } else {
-                return;
+    let index = {
+        let mut pm = lock_profile_manager(profile_manager);
+        match action {
+            HotkeyAction::NextProfile => {
+                pm.next_profile();
+                pm.current_index()
+            }
+            HotkeyAction::PrevProfile => {
+                pm.prev_profile();
+                pm.current_index()
+            }
+            HotkeyAction::Reset => {
+                pm.set_profile(0);
+                0
             }
         }
     };
 
-    drop(pm);
+    let mut asm = lock_auto_switch_manager(auto_switch_manager);
+    asm.handle_manual_switch(index);
+    drop(asm);
 
-    let res = if target_displays.is_empty() {
-        nvidia.apply_display_settings(None, &settings)
-    } else {
-        for id in &target_displays {
-            let _ = nvidia.apply_display_settings(Some(id), &settings);
-        }
-        Ok(())
-    };
-
-    match res {
-        Ok(()) => {
-            info!("Профиль '{}' применён", profile_name);
-            if show_notifications {
-                platform::windows::show_notification(
-                    "Профиль переключён",
-                    &format!("Активный профиль: {}", profile_name),
-                );
-            }
-        }
-        Err(e) => {
-            error!("Ошибка применения профиля '{}': {}", profile_name, e);
-        }
-    }
+    apply_profile_internal(index, nvidia, profile_manager, show_notifications, false);
 }
 
 fn handle_menu_event(
     id: &str,
     nvidia: &NvidiaController,
     pm: &Arc<Mutex<ProfileManager>>,
+    asm: &Arc<Mutex<AutoSwitchManager>>,
     show_notif: bool,
 ) -> bool {
     match id {
@@ -80,45 +123,21 @@ fn handle_menu_event(
             return true; // сигнал на выход
         }
         "next_profile" => {
-            handle_action(HotkeyAction::NextProfile, nvidia, pm, show_notif);
+            handle_action(HotkeyAction::NextProfile, nvidia, pm, asm, show_notif);
         }
         "prev_profile" => {
-            handle_action(HotkeyAction::PrevProfile, nvidia, pm, show_notif);
+            handle_action(HotkeyAction::PrevProfile, nvidia, pm, asm, show_notif);
         }
         "reset" => {
-            handle_action(HotkeyAction::Reset, nvidia, pm, show_notif);
+            handle_action(HotkeyAction::Reset, nvidia, pm, asm, show_notif);
         }
         other if other.starts_with("profile_") => {
             if let Ok(index) = other.trim_start_matches("profile_").parse::<usize>() {
-                let mut pm_lock = lock_profile_manager(pm);
-                if let Some(profile) = pm_lock.set_profile(index) {
-                    let name = profile.name.clone();
-                    let settings = profile.settings.clone();
-                    let target_displays = profile.target_displays.clone();
-                    drop(pm_lock);
+                let mut asm_lock = lock_auto_switch_manager(asm);
+                asm_lock.handle_manual_switch(index);
+                drop(asm_lock);
 
-                    let res = if target_displays.is_empty() {
-                        nvidia.apply_display_settings(None, &settings)
-                    } else {
-                        for id in &target_displays {
-                            let _ = nvidia.apply_display_settings(Some(id), &settings);
-                        }
-                        Ok(())
-                    };
-
-                    match res {
-                        Ok(()) => {
-                            info!("Профиль применён: {}", name);
-                            if show_notif {
-                                platform::windows::show_notification(
-                                    "Профиль изменён",
-                                    &format!("Активный профиль: {}", name),
-                                );
-                            }
-                        }
-                        Err(e) => error!("Ошибка: {}", e),
-                    }
-                }
+                apply_profile_internal(index, nvidia, pm, show_notif, false);
             }
         }
         _ => {}
@@ -131,6 +150,18 @@ fn lock_profile_manager(pm: &Arc<Mutex<ProfileManager>>) -> MutexGuard<'_, Profi
         Ok(guard) => guard,
         Err(poisoned) => {
             error!("ProfileManager mutex poisoned; continuing with inner value");
+            poisoned.into_inner()
+        }
+    }
+}
+
+fn lock_auto_switch_manager(
+    asm: &Arc<Mutex<AutoSwitchManager>>,
+) -> MutexGuard<'_, AutoSwitchManager> {
+    match asm.lock() {
+        Ok(guard) => guard,
+        Err(poisoned) => {
+            error!("AutoSwitchManager mutex poisoned; continuing with inner value");
             poisoned.into_inner()
         }
     }
@@ -157,13 +188,18 @@ fn main() {
     };
 
     let profile_manager = Arc::new(Mutex::new(ProfileManager::new(config.profiles)));
+    let initial_index = {
+        let pm = lock_profile_manager(&profile_manager);
+        pm.current_index()
+    };
+    let auto_switch_manager = Arc::new(Mutex::new(AutoSwitchManager::new(initial_index)));
 
     // Применяем начальный профиль
     let initial_profile_name = {
         let pm = lock_profile_manager(&profile_manager);
         let profile = pm.current_profile();
         info!("Начальный профиль: {}", profile.name);
-        
+
         let res = if profile.target_displays.is_empty() {
             nvidia.apply_display_settings(None, &profile.settings)
         } else {
@@ -213,6 +249,9 @@ fn main() {
         }
     };
 
+    // Установка хука на смену фокуса
+    let hook = platform::windows::set_foreground_hook(win_event_proc);
+
     info!("Приложение запущено.");
     info!("Ctrl+Shift+F5 — следующий профиль");
     info!("Ctrl+Shift+F6 — предыдущий профиль");
@@ -228,24 +267,56 @@ fn main() {
         // 1. Прокачиваем Windows-сообщения (нужно для хоткеев и трея)
         platform::windows::pump_messages();
 
-        // 2. Обработка горячих клавиш
-        while let Ok(event) = GlobalHotKeyEvent::receiver().try_recv() {
-            let now = Instant::now();
+        // 2. Обработка авто-переключения
+        if FOREGROUND_CHANGED.swap(false, Ordering::SeqCst) {
+            if let Some(process_name) = platform::windows::get_foreground_process_name() {
+                let mut asm = lock_auto_switch_manager(&auto_switch_manager);
+                let pm = lock_profile_manager(&profile_manager);
+                let profiles = pm.profiles().to_vec();
+                drop(pm);
 
-            if event.state() == HotKeyState::Pressed && now.duration_since(last_trigger) > cooldown
-            {
-                last_trigger = now;
-                if let Some(action) = hotkey_controller.get_action(event.id()) {
-                    handle_action(action, &nvidia, &profile_manager, show_notif);
+                if let Some(target_index) = asm.evaluate_focus_change(&process_name, &profiles) {
+                    drop(asm);
+                    apply_profile_internal(
+                        target_index,
+                        &nvidia,
+                        &profile_manager,
+                        show_notif,
+                        true,
+                    );
                 }
             }
         }
 
-        // 3. Обработка событий меню трея
+        // 3. Обработка горячих клавиш
+        while let Ok(event) = GlobalHotKeyEvent::receiver().try_recv() {
+            let now = Instant::now();
+
+            if event.state() == HotKeyState::Pressed && now.duration_since(last_trigger) > cooldown {
+                last_trigger = now;
+                if let Some(action) = hotkey_controller.get_action(event.id()) {
+                    handle_action(
+                        action,
+                        &nvidia,
+                        &profile_manager,
+                        &auto_switch_manager,
+                        show_notif,
+                    );
+                }
+            }
+        }
+
+        // 4. Обработка событий меню трея
         let mut should_quit = false;
         while let Ok(event) = MenuEvent::receiver().try_recv() {
             let id = event.id().0.as_str();
-            if handle_menu_event(id, &nvidia, &profile_manager, show_notif) {
+            if handle_menu_event(
+                id,
+                &nvidia,
+                &profile_manager,
+                &auto_switch_manager,
+                show_notif,
+            ) {
                 should_quit = true;
                 break;
             }
@@ -254,8 +325,12 @@ fn main() {
             break;
         }
 
-        // 4. Ждём следующее сообщение (0% CPU в простое)
+        // 5. Ждём следующее сообщение (0% CPU в простое)
         platform::windows::wait_message();
+    }
+
+    if !hook.is_null() {
+        platform::windows::unhook_event_hook(hook);
     }
 
     info!("Приложение завершено");

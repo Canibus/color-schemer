@@ -269,3 +269,23 @@ fn test_profile_serialization() {
     assert_eq!(restored.name, "Test");
     assert_eq!(restored.settings.brightness, 1.2);
 }
+
+#[test]
+fn test_profile_applications() {
+    let mut profile = DisplayProfile::new(
+        "Gaming",
+        "Gaming settings",
+        DisplaySettings::default(),
+    );
+    profile.applications.push("Notepad.exe".to_string());
+
+    assert_eq!(profile.applications.len(), 1);
+    assert_eq!(profile.applications[0], "Notepad.exe");
+
+    let json = serde_json::to_string(&profile).unwrap();
+    assert!(json.contains("\"applications\":[\"Notepad.exe\"]"));
+    
+    let restored: DisplayProfile = serde_json::from_str(&json).unwrap();
+    assert_eq!(restored.applications.len(), 1);
+    assert_eq!(restored.applications[0], "Notepad.exe");
+}

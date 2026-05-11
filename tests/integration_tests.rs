@@ -35,19 +35,19 @@ fn test_switch_applies_correct_settings() {
     let mut pm = ProfileManager::new(test_profiles());
 
     // Начальный профиль
-    gpu.apply_display_settings(&pm.current_profile().settings)
+    gpu.apply_display_settings(None, &pm.current_profile().settings)
         .unwrap();
     assert!(gpu.last_settings().unwrap().is_default());
 
     // Gaming
     let p = pm.next_profile();
-    gpu.apply_display_settings(&p.settings).unwrap();
+    gpu.apply_display_settings(None, &p.settings).unwrap();
     assert_eq!(gpu.last_settings().unwrap().brightness, 1.2);
     assert_eq!(gpu.last_settings().unwrap().digital_vibrance, 63);
 
     // Night
     let p = pm.next_profile();
-    gpu.apply_display_settings(&p.settings).unwrap();
+    gpu.apply_display_settings(None, &p.settings).unwrap();
     assert_eq!(gpu.last_settings().unwrap().brightness, 0.7);
 }
 
@@ -58,7 +58,7 @@ fn test_full_cycle_count() {
 
     for _ in 0..pm.count() {
         let p = pm.next_profile();
-        gpu.apply_display_settings(&p.settings).unwrap();
+        gpu.apply_display_settings(None, &p.settings).unwrap();
     }
 
     assert_eq!(gpu.call_count(), 3);
@@ -71,13 +71,13 @@ fn test_reset_to_default() {
 
     // Переключаемся на Gaming
     pm.next_profile();
-    gpu.apply_display_settings(&pm.current_profile().settings)
+    gpu.apply_display_settings(None, &pm.current_profile().settings)
         .unwrap();
     assert_eq!(gpu.last_settings().unwrap().brightness, 1.2);
 
     // Сброс
     let p = pm.set_profile(0).unwrap();
-    gpu.apply_display_settings(&p.settings).unwrap();
+    gpu.apply_display_settings(None, &p.settings).unwrap();
     assert!(gpu.last_settings().unwrap().is_default());
 }
 
@@ -89,7 +89,7 @@ fn test_gpu_failure_does_not_affect_profile_state() {
     gpu.set_should_fail(true);
 
     let p = pm.next_profile();
-    let result = gpu.apply_display_settings(&p.settings);
+    let result = gpu.apply_display_settings(None, &p.settings);
 
     assert!(result.is_err());
     // ProfileManager всё равно переключился
@@ -103,7 +103,7 @@ fn test_rapid_switching() {
 
     for _ in 0..100 {
         let p = pm.next_profile();
-        gpu.apply_display_settings(&p.settings).unwrap();
+        gpu.apply_display_settings(None, &p.settings).unwrap();
     }
 
     assert_eq!(gpu.call_count(), 100);
@@ -127,7 +127,7 @@ fn test_concurrent_access() {
                         let p = pm.next_profile();
                         p.settings.clone()
                     };
-                    gpu.apply_display_settings(&settings).unwrap();
+                    gpu.apply_display_settings(None, &settings).unwrap();
                 }
             })
         })

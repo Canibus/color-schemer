@@ -19,6 +19,7 @@ digital_vibrance = 0
 [[profiles]]
 name = "Gaming"
 description = "Игровой профиль - повышенная яркость и насыщенность"
+applications = ["Notepad.exe"]
 
 [profiles.settings]
 brightness = 1.1

@@ -30,6 +30,7 @@ pub mod windows {
         fn TranslateMessage(msg: *const MSG) -> i32;
         fn DispatchMessageW(msg: *const MSG) -> isize;
         fn WaitMessage() -> i32;
+        fn PostMessageW(hwnd: *mut c_void, msg: u32, wparam: usize, lparam: isize) -> i32;
         fn GetForegroundWindow() -> *mut c_void;
         fn GetWindowThreadProcessId(hwnd: *mut c_void, lpdw_process_id: *mut u32) -> u32;
         fn EnumWindows(
@@ -39,6 +40,24 @@ pub mod windows {
         fn IsWindowVisible(hwnd: *mut c_void) -> i32;
         fn GetWindowTextW(hwnd: *mut c_void, lp_string: *mut u16, n_max_count: i32) -> i32;
         fn GetWindowTextLengthW(hwnd: *mut c_void) -> i32;
+        fn SetWinEventHook(
+            event_min: u32,
+            event_max: u32,
+            h_module_win_event_hook: *mut c_void,
+            lpfn_win_event_proc: unsafe extern "system" fn(
+                *mut c_void,
+                u32,
+                *mut c_void,
+                i32,
+                i32,
+                u32,
+                u32,
+            ),
+            id_process: u32,
+            id_thread: u32,
+            dw_flags: u32,
+        ) -> *mut c_void;
+        fn UnhookWinEvent(h_win_event_hook: *mut c_void) -> i32;
     }
 
     #[link(name = "kernel32")]
@@ -60,6 +79,10 @@ pub mod windows {
     const PM_REMOVE: u32 = 0x0001;
     const PROCESS_QUERY_INFORMATION: u32 = 0x0400;
     const PROCESS_VM_READ: u32 = 0x0010;
+
+    pub const EVENT_SYSTEM_FOREGROUND: u32 = 0x0003;
+    pub const WINEVENT_OUTOFCONTEXT: u32 = 0x0000;
+    pub const WM_NULL: u32 = 0x0000;
 
     #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
     pub struct ProcessInfo {
@@ -156,6 +179,37 @@ pub mod windows {
     pub fn wait_message() {
         unsafe {
             WaitMessage();
+        }
+    }
+
+    /// Post a null message to wake up the message loop.
+    pub fn wake_message_loop() {
+        unsafe {
+            PostMessageW(std::ptr::null_mut(), WM_NULL, 0, 0);
+        }
+    }
+
+    /// Set a window event hook.
+    pub fn set_foreground_hook(
+        callback: unsafe extern "system" fn(*mut c_void, u32, *mut c_void, i32, i32, u32, u32),
+    ) -> *mut c_void {
+        unsafe {
+            SetWinEventHook(
+                EVENT_SYSTEM_FOREGROUND,
+                EVENT_SYSTEM_FOREGROUND,
+                std::ptr::null_mut(),
+                callback,
+                0,
+                0,
+                WINEVENT_OUTOFCONTEXT,
+            )
+        }
+    }
+
+    /// Unhook a window event hook.
+    pub fn unhook_event_hook(hook: *mut c_void) {
+        unsafe {
+            UnhookWinEvent(hook);
         }
     }
 

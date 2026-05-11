@@ -49,16 +49,20 @@ impl Default for AppConfig {
                     "Стандартные настройки",
                     DisplaySettings::default(),
                 ),
-                DisplayProfile::new(
-                    "Игровой",
-                    "Игровой профиль",
-                    DisplaySettings {
-                        brightness: 1.1,
-                        contrast: 1.15,
-                        gamma: 0.95,
-                        digital_vibrance: 63,
-                    },
-                ),
+                {
+                    let mut p = DisplayProfile::new(
+                        "Игровой",
+                        "Игровой профиль",
+                        DisplaySettings {
+                            brightness: 1.1,
+                            contrast: 1.15,
+                            gamma: 0.95,
+                            digital_vibrance: 63,
+                        },
+                    );
+                    p.applications = vec!["Notepad.exe".to_string()];
+                    p
+                },
                 DisplayProfile::new(
                     "Ночной",
                     "Ночной режим",
@@ -77,16 +81,20 @@ impl Default for AppConfig {
                     "Standard settings",
                     DisplaySettings::default(),
                 ),
-                DisplayProfile::new(
-                    "Gaming",
-                    "Gaming profile",
-                    DisplaySettings {
-                        brightness: 1.1,
-                        contrast: 1.15,
-                        gamma: 0.95,
-                        digital_vibrance: 63,
-                    },
-                ),
+                {
+                    let mut p = DisplayProfile::new(
+                        "Gaming",
+                        "Gaming profile",
+                        DisplaySettings {
+                            brightness: 1.1,
+                            contrast: 1.15,
+                            gamma: 0.95,
+                            digital_vibrance: 63,
+                        },
+                    );
+                    p.applications = vec!["Notepad.exe".to_string()];
+                    p
+                },
                 DisplayProfile::new(
                     "Night",
                     "Night mode",

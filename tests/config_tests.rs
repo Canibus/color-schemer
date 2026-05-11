@@ -235,3 +235,28 @@ digital_vibrance = 200
     assert_eq!(config.profiles[2].name, "C");
     assert_eq!(config.profiles[2].settings.brightness, 2.0);
 }
+
+#[test]
+fn test_load_config_with_applications() {
+    let content = r#"
+[[profiles]]
+name = "Gaming"
+description = "Gaming profile"
+applications = ["Game.exe", "OtherGame.exe"]
+
+[profiles.settings]
+brightness = 1.1
+contrast = 1.15
+gamma = 0.95
+digital_vibrance = 63
+"#;
+
+    let file = temp_config(content);
+    let config = AppConfig::load_from(file.path());
+
+    assert_eq!(config.profiles.len(), 1);
+    assert_eq!(config.profiles[0].name, "Gaming");
+    assert_eq!(config.profiles[0].applications.len(), 2);
+    assert_eq!(config.profiles[0].applications[0], "Game.exe");
+    assert_eq!(config.profiles[0].applications[1], "OtherGame.exe");
+}

@@ -248,7 +248,7 @@ fn test_mock_apply_records_call() {
         ..Default::default()
     };
 
-    mock.apply_display_settings(&settings).unwrap();
+    mock.apply_display_settings(None, &settings).unwrap();
     assert_eq!(mock.call_count(), 1);
     assert_eq!(mock.last_settings().unwrap().brightness, 1.5);
 }

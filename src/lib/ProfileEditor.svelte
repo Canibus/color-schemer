@@ -1,7 +1,8 @@
 <!-- src/lib/ProfileEditor.svelte -->
 <script lang="ts">
-  import type { DisplayInfo, DisplayProfile, DisplaySettings } from "./types";
+  import type { DisplayInfo, DisplayProfile, DisplaySettings, ProcessInfo } from "./types";
   import { i18n } from "./i18n.svelte";
+  import { invoke } from "@tauri-apps/api/tauri";
   
   let { 
     profile, 
@@ -21,12 +22,20 @@
 
   // Local copy for editing
   let edited = $state(JSON.parse(JSON.stringify(profile)) as DisplayProfile);
+  
+  // App picker state
+  let runningApps = $state<ProcessInfo[]>([]);
+  let showAppPicker = $state(false);
+  let appPickerLoading = $state(false);
 
   $effect(() => {
     // We update 'edited' only when the 'profile' prop changes (e.g. switching which profile is being edited)
     let copy = JSON.parse(JSON.stringify(profile)) as DisplayProfile;
     if (!copy.target_displays) {
         copy.target_displays = [];
+    }
+    if (!copy.applications) {
+        copy.applications = [];
     }
     edited = copy;
   });
@@ -41,8 +50,29 @@
       } else {
           edited.target_displays = [...edited.target_displays, id];
       }
-      // Note: We don't call handleInput() here to avoid applying the profile 
-      // just by clicking a display checkbox. Preview only happens on slider changes.
+  }
+
+  async function openAppPicker() {
+      showAppPicker = true;
+      appPickerLoading = true;
+      try {
+          runningApps = await invoke<ProcessInfo[]>("get_running_apps");
+      } catch (e) {
+          console.error("Failed to fetch running apps:", e);
+      } finally {
+          appPickerLoading = false;
+      }
+  }
+
+  function addApplication(name: string) {
+      if (!edited.applications.includes(name)) {
+          edited.applications = [...edited.applications, name];
+      }
+      showAppPicker = false;
+  }
+
+  function removeApplication(name: string) {
+      edited.applications = edited.applications.filter(a => a !== name);
   }
 </script>
 
@@ -80,6 +110,27 @@
           <div class="no-displays">{i18n.t('editor.all_displays')}</div>
         {/if}
       </div>
+    </div>
+  </div>
+
+  <div class="field-group">
+    <div class="group-label">{i18n.t('editor.applications')}</div>
+    <div class="group-content">
+      <div class="apps-help">{i18n.t('editor.apps_help')}</div>
+      <div class="app-list">
+        {#each edited.applications as app}
+          <div class="app-tag">
+            <span>{app}</span>
+            <button class="remove-app" onclick={() => removeApplication(app)}>×</button>
+          </div>
+        {/each}
+        {#if edited.applications.length === 0}
+          <div class="no-apps">{i18n.t('editor.no_apps')}</div>
+        {/if}
+      </div>
+      <button class="add-app-btn" onclick={openAppPicker}>
+        {i18n.t('editor.pick_app')}
+      </button>
     </div>
   </div>
 
@@ -125,6 +176,31 @@
       <button onclick={() => onSave(edited)}>{i18n.t('editor.save')}</button>
   </div>
 </div>
+
+{#if showAppPicker}
+  <div class="modal-overlay" onclick={() => showAppPicker = false}>
+    <div class="modal-content" onclick={(e) => e.stopPropagation()}>
+      <div class="modal-header">
+        <h4>{i18n.t('editor.pick_app')}</h4>
+        <button class="close-modal" onclick={() => showAppPicker = false}>×</button>
+      </div>
+      <div class="modal-body">
+        {#if appPickerLoading}
+          <div class="loading">{i18n.t('app.status.loading')}</div>
+        {:else}
+          <div class="running-apps">
+            {#each runningApps as app}
+              <button class="app-item" onclick={() => addApplication(app.name)}>
+                <span class="app-name">{app.name}</span>
+                <span class="app-title">{app.title}</span>
+              </button>
+            {/each}
+          </div>
+        {/if}
+      </div>
+    </div>
+  </div>
+{/if}
 
 <style>
   .editor { display: flex; flex-direction: column; gap: 15px; color: var(--text-main); }
@@ -343,5 +419,199 @@
   button:not(.delete-btn):active {
     transform: translateY(1px);
     box-shadow: none;
+  }
+
+  /* Application Picker & List Styles */
+  .apps-help {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-style: italic;
+    margin-bottom: -5px;
+  }
+
+  .app-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    min-height: 40px;
+    padding: 10px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+
+  .app-tag {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 10px;
+    background: var(--bg-active);
+    border: 1px solid var(--primary-dim);
+    border-radius: 6px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--primary);
+  }
+
+  .remove-app {
+    background: none !important;
+    border: none !important;
+    color: var(--text-muted) !important;
+    padding: 0 !important;
+    font-size: 16px !important;
+    line-height: 1 !important;
+    cursor: pointer !important;
+    box-shadow: none !important;
+    transform: none !important;
+    margin: 0 !important;
+    min-width: unset !important;
+  }
+
+  .remove-app:hover {
+    color: var(--error) !important;
+  }
+
+  .no-apps {
+    color: var(--text-muted);
+    font-size: 12px;
+    font-style: italic;
+    margin: auto;
+  }
+
+  .add-app-btn {
+    align-self: flex-start;
+  }
+
+  /* Modal Styles */
+  .modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+
+  .modal-content {
+    background: var(--bg-layer);
+    border: 1px solid var(--primary);
+    border-radius: 12px;
+    width: 90%;
+    max-width: 500px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 0 30px rgba(0, 0, 0, 0.5), 0 0 15px var(--primary-glow);
+    animation: modal-appear 0.3s ease-out;
+  }
+
+  @keyframes modal-appear {
+    from { opacity: 0; transform: scale(0.95) translateY(10px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+  }
+
+  .modal-header {
+    padding: 15px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--bg-active);
+  }
+
+  .modal-header h4 {
+    margin: 0;
+    color: var(--primary);
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-size: 14px;
+  }
+
+  .close-modal {
+    background: none !important;
+    border: none !important;
+    color: var(--text-muted) !important;
+    font-size: 24px !important;
+    padding: 0 !important;
+    cursor: pointer !important;
+    box-shadow: none !important;
+    transform: none !important;
+    margin: 0 !important;
+    min-width: unset !important;
+  }
+
+  .close-modal:hover {
+    color: var(--primary) !important;
+  }
+
+  .modal-body {
+    padding: 0;
+    overflow-y: auto;
+    flex: 1;
+  }
+
+  .running-apps {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .app-item {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 2px;
+    padding: 12px 20px !important;
+    border: none !important;
+    border-bottom: 1px solid var(--border) !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    width: 100%;
+    text-align: left;
+    transition: all 0.15s !important;
+    box-shadow: none !important;
+    transform: none !important;
+    margin: 0 !important;
+  }
+
+  .app-item:hover {
+    background: var(--bg-active) !important;
+  }
+
+  .app-name {
+    color: var(--primary);
+    font-family: var(--font-mono);
+    font-weight: bold;
+    font-size: 13px;
+  }
+
+  .app-title {
+    color: var(--text-muted);
+    font-size: 11px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%;
+  }
+
+  .loading {
+    padding: 40px;
+    text-align: center;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    animation: pulse 1.5s infinite;
+  }
+
+  @keyframes pulse {
+    0% { opacity: 0.5; }
+    50% { opacity: 1; }
+    100% { opacity: 0.5; }
   }
 </style>

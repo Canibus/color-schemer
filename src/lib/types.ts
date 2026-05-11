@@ -12,11 +12,17 @@ export type DisplayInfo = {
     is_primary: boolean;
 };
 
+export type ProcessInfo = {
+    name: string;
+    title: string;
+};
+
 export type DisplayProfile = {
   name: string;
   description: string;
   settings: DisplaySettings;
   target_displays: string[];
+  applications: string[];
 };
 
 export type HotkeyConfig = {
