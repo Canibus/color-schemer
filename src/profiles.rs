@@ -7,6 +7,8 @@ pub struct DisplayProfile {
     pub name: String,
     pub description: String,
     pub settings: DisplaySettings,
+    #[serde(default)]
+    pub target_displays: Vec<String>,
 }
 
 impl DisplayProfile {
@@ -15,6 +17,7 @@ impl DisplayProfile {
             name: name.to_string(),
             description: description.to_string(),
             settings,
+            target_displays: Vec::new(),
         }
     }
 }

@@ -5,6 +5,7 @@ export class I18nManager {
     en: {
       "nav.profiles": "Profiles",
       "nav.settings": "Settings",
+      "profiles.primary": "Primary",
       "profiles.active": "Active",
       "profiles.apply": "Apply",
       "profiles.edit": "Edit",
@@ -20,6 +21,8 @@ export class I18nManager {
       "editor.title": "Edit Profile",
       "editor.new_profile": "New Profile",
       "editor.settings": "Settings",
+      "editor.displays": "Target Displays",
+      "editor.all_displays": "Apply to all displays",
       "editor.save": "Save",
       "editor.cancel": "Cancel",
       "editor.delete": "Delete",
@@ -49,6 +52,7 @@ export class I18nManager {
     ru: {
       "nav.profiles": "Профили",
       "nav.settings": "Настройки",
+      "profiles.primary": "Основной",
       "profiles.active": "Активен",
       "profiles.apply": "Применить",
       "profiles.edit": "Изменить",
@@ -64,6 +68,8 @@ export class I18nManager {
       "editor.title": "Редактировать профиль",
       "editor.new_profile": "Новый профиль",
       "editor.settings": "Настройки",
+      "editor.displays": "Целевые дисплеи",
+      "editor.all_displays": "Применять ко всем дисплеям",
       "editor.save": "Сохранить",
       "editor.cancel": "Отмена",
       "editor.delete": "Удалить",

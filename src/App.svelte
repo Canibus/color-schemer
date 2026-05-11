@@ -4,7 +4,7 @@
   import "./theme.css";
   import { invoke } from "@tauri-apps/api/tauri";
   import { appWindow } from "@tauri-apps/api/window";
-  import type { DisplayProfile, AppConfig, DisplaySettings } from "./lib/types";
+  import type { DisplayProfile, AppConfig, DisplaySettings, DisplayInfo } from "./lib/types";
   import ProfileList from "./lib/ProfileList.svelte";
   import ProfileEditor from "./lib/ProfileEditor.svelte";
   import SettingsTab from "./lib/SettingsTab.svelte";
@@ -13,6 +13,7 @@
   let profiles = $state<DisplayProfile[]>([]);
   let activeIndex = $state<number | null>(null);
   let config = $state<AppConfig | null>(null);
+  let displays = $state<DisplayInfo[]>([]);
   
   let activeTab = $state<'profiles' | 'settings'>('profiles');
   let editingIndex = $state<number | null>(null);
@@ -37,10 +38,17 @@
   async function loadState() {
     status = i18n.t("app.status.loading");
     try {
-        const res = await invoke<{ profiles: DisplayProfile[]; active_index: number }>("get_profiles_state");
+        const [res, cfg, ds] = await Promise.all([
+            invoke<{ profiles: DisplayProfile[]; active_index: number }>("get_profiles_state"),
+            invoke<AppConfig>("get_config"),
+            invoke<DisplayInfo[]>("get_displays")
+        ]);
+        
         profiles = res.profiles;
         activeIndex = res.active_index;
-        config = await invoke<AppConfig>("get_config");
+        config = cfg;
+        displays = ds;
+        
         if (config && config.language) {
             i18n.setLanguage(config.language);
         }
@@ -62,9 +70,9 @@
       }
   }
 
-  async function previewSettings(settings: DisplaySettings) {
+  async function previewSettings(settings: DisplaySettings, displayIds: string[]) {
       try {
-          await invoke("preview_settings", { settings });
+          await invoke("preview_settings", { settings, displayIds });
       } catch (e) {
           console.error("Preview failed:", e);
       }
@@ -171,7 +179,8 @@
           {#if editingIndex !== null && config}
               {#if editingIndex === -1}
                   <ProfileEditor 
-                      profile={{ name: i18n.t('editor.new_profile'), description: "", settings: { brightness: 1, contrast: 1, gamma: 1, digital_vibrance: 0 } }} 
+                      profile={{ name: i18n.t('editor.new_profile'), description: "", settings: { brightness: 1, contrast: 1, gamma: 1, digital_vibrance: 0 }, target_displays: [] }} 
+                      {displays}
                       onSave={(p) => {
                           const newConfig = { ...config };
                           newConfig.profiles.push(p);
@@ -183,6 +192,7 @@
               {:else}
                   <ProfileEditor 
                       profile={config.profiles[editingIndex]} 
+                      {displays}
                       onSave={saveProfile} 
                       onCancel={cancelEdit} 
                       onPreview={previewSettings} 

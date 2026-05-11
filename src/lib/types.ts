@@ -6,10 +6,17 @@ export type DisplaySettings = {
   digital_vibrance: number;
 };
 
+export type DisplayInfo = {
+    id: string;
+    name: string;
+    is_primary: boolean;
+};
+
 export type DisplayProfile = {
   name: string;
   description: string;
   settings: DisplaySettings;
+  target_displays: string[];
 };
 
 export type HotkeyConfig = {

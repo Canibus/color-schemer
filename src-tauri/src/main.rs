@@ -73,26 +73,58 @@ fn get_profiles_state(state: tauri::State<'_, AppState>) -> Result<ProfilesState
 }
 
 #[tauri::command]
+fn get_displays(state: tauri::State<'_, AppState>) -> Result<Vec<color_schemer::nvidia::DisplayInfo>, String> {
+    state.nvidia.get_displays().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 fn apply_profile(state: tauri::State<'_, AppState>, index: usize) -> Result<(), String> {
     let mut pm = lock_pm(&state.pm);
     let profile = pm
         .set_profile(index)
         .ok_or_else(|| format!("invalid profile index: {}", index))?;
-    state.nvidia.apply_display_settings(&profile.settings).map_err(|e| e.to_string())
+    
+    let settings = &profile.settings;
+    if profile.target_displays.is_empty() {
+        state.nvidia.apply_display_settings(None, settings).map_err(|e| e.to_string())?;
+    } else {
+        for id in &profile.target_displays {
+            let _ = state.nvidia.apply_display_settings(Some(id), settings);
+        }
+    }
+    Ok(())
 }
 
 #[tauri::command]
 fn next_profile(state: tauri::State<'_, AppState>) -> Result<(), String> {
     let mut pm = lock_pm(&state.pm);
-    let profile = pm.next_profile();
-    state.nvidia.apply_display_settings(&profile.settings).map_err(|e| e.to_string())
+    let profile = pm.next_profile().clone();
+    drop(pm);
+
+    if profile.target_displays.is_empty() {
+        state.nvidia.apply_display_settings(None, &profile.settings).map_err(|e| e.to_string())
+    } else {
+        for id in &profile.target_displays {
+            let _ = state.nvidia.apply_display_settings(Some(id), &profile.settings);
+        }
+        Ok(())
+    }
 }
 
 #[tauri::command]
 fn prev_profile(state: tauri::State<'_, AppState>) -> Result<(), String> {
     let mut pm = lock_pm(&state.pm);
-    let profile = pm.prev_profile();
-    state.nvidia.apply_display_settings(&profile.settings).map_err(|e| e.to_string())
+    let profile = pm.prev_profile().clone();
+    drop(pm);
+
+    if profile.target_displays.is_empty() {
+        state.nvidia.apply_display_settings(None, &profile.settings).map_err(|e| e.to_string())
+    } else {
+        for id in &profile.target_displays {
+            let _ = state.nvidia.apply_display_settings(Some(id), &profile.settings);
+        }
+        Ok(())
+    }
 }
 
 #[tauri::command]
@@ -101,7 +133,20 @@ fn reset_profile(state: tauri::State<'_, AppState>) -> Result<(), String> {
     let profile = pm
         .set_profile(0)
         .ok_or_else(|| "no profiles available".to_string())?;
-    state.nvidia.apply_display_settings(&profile.settings).map_err(|e| e.to_string())
+    
+    // Resetting usually means applying the default profile (index 0)
+    // We should probably reset ALL displays if we're doing a global reset, 
+    // or just the target displays of the default profile.
+    // Let's assume reset_profile means "go to default profile".
+    let settings = &profile.settings;
+    if profile.target_displays.is_empty() {
+        state.nvidia.apply_display_settings(None, settings).map_err(|e| e.to_string())?;
+    } else {
+        for id in &profile.target_displays {
+            let _ = state.nvidia.apply_display_settings(Some(id), settings);
+        }
+    }
+    Ok(())
 }
 
 #[tauri::command]
@@ -154,8 +199,15 @@ fn save_config(state: tauri::State<'_, AppState>, app_handle: tauri::AppHandle, 
 }
 
 #[tauri::command]
-fn preview_settings(state: tauri::State<'_, AppState>, settings: DisplaySettings) -> Result<(), String> {
-    state.nvidia.apply_display_settings(&settings).map_err(|e| e.to_string())
+fn preview_settings(state: tauri::State<'_, AppState>, settings: DisplaySettings, display_ids: Vec<String>) -> Result<(), String> {
+    if display_ids.is_empty() {
+        state.nvidia.apply_display_settings(None, &settings).map_err(|e| e.to_string())
+    } else {
+        for id in &display_ids {
+            let _ = state.nvidia.apply_display_settings(Some(id), &settings);
+        }
+        Ok(())
+    }
 }
 
 use tauri::{CustomMenuItem, Manager, SystemTray, SystemTrayEvent, SystemTrayMenu, SystemTrayMenuItem};
@@ -182,7 +234,14 @@ fn main() {
 
     // Apply initial profile (index 0).
     if let Ok(pm_lock) = pm.lock() {
-        let _ = nvidia.apply_display_settings(&pm_lock.current_profile().settings);
+        let profile = pm_lock.current_profile();
+        if profile.target_displays.is_empty() {
+            let _ = nvidia.apply_display_settings(None, &profile.settings);
+        } else {
+            for id in &profile.target_displays {
+                let _ = nvidia.apply_display_settings(Some(id), &profile.settings);
+            }
+        }
     }
 
     // System Tray Setup
@@ -279,7 +338,14 @@ fn main() {
                                 };
                                 drop(pm);
                                 
-                                let _ = nvidia_c.apply_display_settings(&profile.settings);
+                                let _ = if profile.target_displays.is_empty() {
+                                    nvidia_c.apply_display_settings(None, &profile.settings)
+                                } else {
+                                    for id in &profile.target_displays {
+                                        let _ = nvidia_c.apply_display_settings(Some(id), &profile.settings);
+                                    }
+                                    Ok(())
+                                };
                                 info!("Hotkey triggered: applied profile '{}'", profile.name);
 
                                 // Show notification if enabled
@@ -322,7 +388,7 @@ fn main() {
             SystemTrayEvent::MenuItemClick { id, .. } => match id.as_str() {
                 "quit" => {
                     info!("Quitting from tray menu");
-                    let _ = nvidia_for_quit.reset();
+                    let _ = nvidia_for_quit.reset(None);
                     std::process::exit(0);
                 }
                 "show" => {
@@ -351,6 +417,7 @@ fn main() {
         })
         .invoke_handler(tauri::generate_handler![
             get_profiles_state,
+            get_displays,
             apply_profile,
             next_profile,
             prev_profile,

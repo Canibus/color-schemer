@@ -22,18 +22,18 @@ fn handle_action(
 ) {
     let mut pm = lock_profile_manager(profile_manager);
 
-    let (profile_name, settings) = match action {
+    let (profile_name, settings, target_displays) = match action {
         HotkeyAction::NextProfile => {
             let profile = pm.next_profile();
-            (profile.name.clone(), profile.settings.clone())
+            (profile.name.clone(), profile.settings.clone(), profile.target_displays.clone())
         }
         HotkeyAction::PrevProfile => {
             let profile = pm.prev_profile();
-            (profile.name.clone(), profile.settings.clone())
+            (profile.name.clone(), profile.settings.clone(), profile.target_displays.clone())
         }
         HotkeyAction::Reset => {
             if let Some(profile) = pm.set_profile(0) {
-                (profile.name.clone(), profile.settings.clone())
+                (profile.name.clone(), profile.settings.clone(), profile.target_displays.clone())
             } else {
                 return;
             }
@@ -42,7 +42,16 @@ fn handle_action(
 
     drop(pm);
 
-    match nvidia.apply_display_settings(&settings) {
+    let res = if target_displays.is_empty() {
+        nvidia.apply_display_settings(None, &settings)
+    } else {
+        for id in &target_displays {
+            let _ = nvidia.apply_display_settings(Some(id), &settings);
+        }
+        Ok(())
+    };
+
+    match res {
         Ok(()) => {
             info!("Профиль '{}' применён", profile_name);
             if show_notifications {
@@ -67,8 +76,7 @@ fn handle_menu_event(
     match id {
         "quit" => {
             info!("Выход из приложения");
-            let _ = NvidiaController::reset_gamma_ramp();
-            let _ = nvidia.set_digital_vibrance(0);
+            let _ = nvidia.reset(None);
             return true; // сигнал на выход
         }
         "next_profile" => {
@@ -86,9 +94,19 @@ fn handle_menu_event(
                 if let Some(profile) = pm_lock.set_profile(index) {
                     let name = profile.name.clone();
                     let settings = profile.settings.clone();
+                    let target_displays = profile.target_displays.clone();
                     drop(pm_lock);
 
-                    match nvidia.apply_display_settings(&settings) {
+                    let res = if target_displays.is_empty() {
+                        nvidia.apply_display_settings(None, &settings)
+                    } else {
+                        for id in &target_displays {
+                            let _ = nvidia.apply_display_settings(Some(id), &settings);
+                        }
+                        Ok(())
+                    };
+
+                    match res {
                         Ok(()) => {
                             info!("Профиль применён: {}", name);
                             if show_notif {
@@ -145,7 +163,17 @@ fn main() {
         let pm = lock_profile_manager(&profile_manager);
         let profile = pm.current_profile();
         info!("Начальный профиль: {}", profile.name);
-        if let Err(e) = nvidia.apply_display_settings(&profile.settings) {
+        
+        let res = if profile.target_displays.is_empty() {
+            nvidia.apply_display_settings(None, &profile.settings)
+        } else {
+            for id in &profile.target_displays {
+                let _ = nvidia.apply_display_settings(Some(id), &profile.settings);
+            }
+            Ok(())
+        };
+
+        if let Err(e) = res {
             warn!("Не удалось применить начальный профиль: {}", e);
         }
         profile.name.clone()

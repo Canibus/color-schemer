@@ -16,6 +16,7 @@
   let recordingKey = $state<keyof HotkeyConfig | null>(null);
 
   $effect(() => {
+    // We update 'edited' only when the 'config' prop changes from outside
     edited = JSON.parse(JSON.stringify(config)) as AppConfig;
   });
 

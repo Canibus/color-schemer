@@ -1,19 +1,21 @@
 <!-- src/lib/ProfileEditor.svelte -->
 <script lang="ts">
-  import type { DisplayProfile, DisplaySettings } from "./types";
+  import type { DisplayInfo, DisplayProfile, DisplaySettings } from "./types";
   import { i18n } from "./i18n.svelte";
   
   let { 
     profile, 
+    displays = [],
     onSave, 
     onCancel, 
     onPreview, 
     onDelete = undefined 
   } = $props<{
     profile: DisplayProfile;
+    displays?: DisplayInfo[];
     onSave: (updated: DisplayProfile) => void;
     onCancel: () => void;
-    onPreview: (settings: DisplaySettings) => void;
+    onPreview: (settings: DisplaySettings, displayIds: string[]) => void;
     onDelete?: () => void;
   }>();
 
@@ -21,11 +23,26 @@
   let edited = $state(JSON.parse(JSON.stringify(profile)) as DisplayProfile);
 
   $effect(() => {
-    edited = JSON.parse(JSON.stringify(profile)) as DisplayProfile;
+    // We update 'edited' only when the 'profile' prop changes (e.g. switching which profile is being edited)
+    let copy = JSON.parse(JSON.stringify(profile)) as DisplayProfile;
+    if (!copy.target_displays) {
+        copy.target_displays = [];
+    }
+    edited = copy;
   });
 
   function handleInput() {
-      onPreview(edited.settings);
+      onPreview(edited.settings, edited.target_displays);
+  }
+
+  function toggleDisplay(id: string) {
+      if (edited.target_displays.includes(id)) {
+          edited.target_displays = edited.target_displays.filter(d => d !== id);
+      } else {
+          edited.target_displays = [...edited.target_displays, id];
+      }
+      // Note: We don't call handleInput() here to avoid applying the profile 
+      // just by clicking a display checkbox. Preview only happens on slider changes.
   }
 </script>
 
@@ -41,6 +58,28 @@
       <label>{i18n.t('editor.description')}
           <input type="text" bind:value={edited.description} />
       </label>
+    </div>
+  </div>
+
+  <div class="field-group">
+    <div class="group-label">{i18n.t('editor.displays')}</div>
+    <div class="group-content">
+      <div class="display-list">
+        {#each displays as d}
+          <label class="display-item">
+            <input type="checkbox" checked={edited.target_displays.includes(d.id)} onchange={() => toggleDisplay(d.id)} />
+            <div class="display-info">
+              <span class="display-name">{d.name} {d.is_primary ? `(${i18n.t('profiles.primary')})` : ''}</span>
+              {#if d.id !== d.name}
+                <span class="display-id">{d.id}</span>
+              {/if}
+            </div>
+          </label>
+        {/each}
+        {#if displays.length === 0}
+          <div class="no-displays">{i18n.t('editor.all_displays')}</div>
+        {/if}
+      </div>
     </div>
   </div>
 
@@ -158,6 +197,86 @@
   }
   
   .actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 10px; }
+
+  .display-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .display-item {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    padding: 10px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .display-item:hover {
+    border-color: var(--primary);
+    background: var(--bg-active);
+  }
+
+  .display-item input[type="checkbox"] {
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--border);
+    border-radius: 4px;
+    cursor: pointer;
+    position: relative;
+    transition: all 0.2s;
+    background: var(--bg-layer);
+    flex-shrink: 0;
+  }
+
+  .display-item input[type="checkbox"]:checked {
+    background: var(--primary);
+    border-color: var(--primary);
+    box-shadow: 0 0 5px var(--primary-glow);
+  }
+
+  .display-item input[type="checkbox"]:checked::after {
+    content: '✓';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: var(--bg-surface);
+    font-size: 12px;
+    font-weight: bold;
+  }
+
+  .display-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .display-name {
+    color: var(--text-main);
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  .display-id {
+    color: var(--text-muted);
+    font-size: 11px;
+    font-family: var(--font-mono);
+  }
+
+  .no-displays {
+    color: var(--text-muted);
+    font-size: 12px;
+    font-style: italic;
+    text-align: center;
+    padding: 10px;
+  }
   
   .delete-btn { 
     background: var(--bg-surface); 
