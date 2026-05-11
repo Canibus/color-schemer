@@ -83,10 +83,10 @@
     <div class="group-label">{i18n.t('editor.info')}</div>
     <div class="group-content">
       <label>{i18n.t('editor.name')}
-          <input type="text" bind:value={edited.name} />
+          <input type="text" bind:value={edited.name} maxlength="32" />
       </label>
       <label>{i18n.t('editor.description')}
-          <input type="text" bind:value={edited.description} />
+          <input type="text" bind:value={edited.description} maxlength="32" />
       </label>
     </div>
   </div>
