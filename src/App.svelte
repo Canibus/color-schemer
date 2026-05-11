@@ -83,8 +83,9 @@
       status = i18n.t("app.status.saving");
       try {
           // Update local config object
-          const newConfig = { ...config };
-          newConfig.profiles[editingIndex] = updatedProfile;
+          const newProfiles = [...config.profiles];
+          newProfiles[editingIndex] = updatedProfile;
+          const newConfig = { ...config, profiles: newProfiles };
           
           // Save to backend
           await invoke("save_config", { updated: newConfig });
@@ -108,8 +109,9 @@
       
       status = i18n.t("app.status.deleting");
       try {
-          const newConfig = { ...config };
-          newConfig.profiles.splice(editingIndex, 1);
+          const newProfiles = [...config.profiles];
+          newProfiles.splice(editingIndex, 1);
+          const newConfig = { ...config, profiles: newProfiles };
           await invoke("save_config", { updated: newConfig });
           
           // If we deleted the active profile, reset to index 0 (if available)
@@ -179,11 +181,13 @@
           {#if editingIndex !== null && config}
               {#if editingIndex === -1}
                   <ProfileEditor 
-                      profile={{ name: i18n.t('editor.new_profile'), description: "", settings: { brightness: 1, contrast: 1, gamma: 1, digital_vibrance: 0 }, target_displays: [] }} 
+                      profile={{ name: i18n.t('editor.new_profile'), description: "", settings: { brightness: 1, contrast: 1, gamma: 1, digital_vibrance: 0 }, target_displays: [], applications: [] }} 
                       {displays}
                       onSave={(p) => {
-                          const newConfig = { ...config };
-                          newConfig.profiles.push(p);
+                          const newConfig = { 
+                              ...config, 
+                              profiles: [...config.profiles, p] 
+                          };
                           saveSettings(newConfig).then(() => editingIndex = null);
                       }} 
                       onCancel={cancelEdit} 

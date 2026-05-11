@@ -21,7 +21,14 @@
   }>();
 
   // Local copy for editing
-  let edited = $state(JSON.parse(JSON.stringify(profile)) as DisplayProfile);
+  function createEditableCopy(p: DisplayProfile): DisplayProfile {
+      const copy = JSON.parse(JSON.stringify(p)) as DisplayProfile;
+      if (!copy.target_displays) copy.target_displays = [];
+      if (!copy.applications) copy.applications = [];
+      return copy;
+  }
+
+  let edited = $state(createEditableCopy(profile));
   
   // App picker state
   let runningApps = $state<ProcessInfo[]>([]);
@@ -30,14 +37,7 @@
 
   $effect(() => {
     // We update 'edited' only when the 'profile' prop changes (e.g. switching which profile is being edited)
-    let copy = JSON.parse(JSON.stringify(profile)) as DisplayProfile;
-    if (!copy.target_displays) {
-        copy.target_displays = [];
-    }
-    if (!copy.applications) {
-        copy.applications = [];
-    }
-    edited = copy;
+    edited = createEditableCopy(profile);
   });
 
   function handleInput() {
