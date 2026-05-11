@@ -40,6 +40,7 @@ pub mod windows {
         fn IsWindowVisible(hwnd: *mut c_void) -> i32;
         fn GetWindowTextW(hwnd: *mut c_void, lp_string: *mut u16, n_max_count: i32) -> i32;
         fn GetWindowTextLengthW(hwnd: *mut c_void) -> i32;
+        fn GetWindow(hwnd: *mut c_void, u_cmd: u32) -> *mut c_void;
         fn SetWinEventHook(
             event_min: u32,
             event_max: u32,
@@ -64,21 +65,31 @@ pub mod windows {
     unsafe extern "system" {
         fn OpenProcess(dw_desired_access: u32, b_inherit_handle: i32, dw_process_id: u32) -> *mut c_void;
         fn CloseHandle(h_object: *mut c_void) -> i32;
+        fn QueryFullProcessImageNameW(h_process: *mut c_void, dw_flags: u32, lp_exe_name: *mut u16, lpdw_size: *mut u32) -> i32;
+        fn CreateToolhelp32Snapshot(dw_flags: u32, th32_process_id: u32) -> *mut c_void;
+        fn Process32FirstW(h_snapshot: *mut c_void, lppe: *mut PROCESSENTRY32W) -> i32;
+        fn Process32NextW(h_snapshot: *mut c_void, lppe: *mut PROCESSENTRY32W) -> i32;
     }
 
-    #[link(name = "psapi")]
-    unsafe extern "system" {
-        fn GetModuleFileNameExW(
-            h_process: *mut c_void,
-            h_module: *mut c_void,
-            lp_filename: *mut u16,
-            n_size: u32,
-        ) -> u32;
+    #[repr(C)]
+    #[allow(non_snake_case)]
+    pub struct PROCESSENTRY32W {
+        pub dwSize: u32,
+        pub cntUsage: u32,
+        pub th32ProcessID: u32,
+        pub th32DefaultHeapID: usize,
+        pub th32ModuleID: u32,
+        pub cntThreads: u32,
+        pub th32ParentProcessID: u32,
+        pub pcPriClassBase: i32,
+        pub dwFlags: u32,
+        pub szExeFile: [u16; 260],
     }
 
+    const TH32CS_SNAPPROCESS: u32 = 0x00000002;
     const PM_REMOVE: u32 = 0x0001;
-    const PROCESS_QUERY_INFORMATION: u32 = 0x0400;
-    const PROCESS_VM_READ: u32 = 0x0010;
+    const PROCESS_QUERY_LIMITED_INFORMATION: u32 = 0x1000;
+    const GW_OWNER: u32 = 4;
 
     pub const EVENT_SYSTEM_FOREGROUND: u32 = 0x0003;
     pub const WINEVENT_OUTOFCONTEXT: u32 = 0x0000;
@@ -109,19 +120,25 @@ pub mod windows {
     }
 
     fn get_process_name_from_id(process_id: u32) -> Option<String> {
+        // First try Toolhelp32 snapshot (more resilient to Anti-Cheat/Permissions)
+        if let Some(name) = get_process_name_via_snapshot(process_id) {
+            return Some(name);
+        }
+
+        // Fallback to OpenProcess + QueryFullProcessImageNameW
         unsafe {
-            let handle = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, 0, process_id);
+            let handle = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, process_id);
             if handle.is_null() {
                 return None;
             }
 
             let mut buffer = [0u16; 1024];
-            let size = GetModuleFileNameExW(handle, std::ptr::null_mut(), buffer.as_mut_ptr(), 1024);
+            let mut size = 1024u32;
+            let ok = QueryFullProcessImageNameW(handle, 0, buffer.as_mut_ptr(), &mut size);
             CloseHandle(handle);
 
-            if size > 0 {
+            if ok != 0 {
                 let full_path = String::from_utf16_lossy(&buffer[..size as usize]);
-                // Return only the filename
                 std::path::Path::new(&full_path)
                     .file_name()
                     .and_then(|n| n.to_str())
@@ -132,6 +149,41 @@ pub mod windows {
         }
     }
 
+    fn get_process_name_via_snapshot(process_id: u32) -> Option<String> {
+        unsafe {
+            let h_snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+            if h_snapshot == (usize::MAX as *mut c_void) {
+                return None;
+            }
+
+            let mut pe = PROCESSENTRY32W {
+                dwSize: std::mem::size_of::<PROCESSENTRY32W>() as u32,
+                cntUsage: 0,
+                th32ProcessID: 0,
+                th32DefaultHeapID: 0,
+                th32ModuleID: 0,
+                cntThreads: 0,
+                th32ParentProcessID: 0,
+                pcPriClassBase: 0,
+                dwFlags: 0,
+                szExeFile: [0u16; 260],
+            };
+
+            let mut ok = Process32FirstW(h_snapshot, &mut pe);
+            let mut found_name = None;
+            while ok != 0 {
+                if pe.th32ProcessID == process_id {
+                    let name = String::from_utf16_lossy(&pe.szExeFile);
+                    found_name = Some(name.trim_matches('\0').to_string());
+                    break;
+                }
+                ok = Process32NextW(h_snapshot, &mut pe);
+            }
+            CloseHandle(h_snapshot);
+            found_name
+        }
+    }
+
     /// Get a list of running applications with visible windows.
     pub fn get_running_apps() -> Vec<ProcessInfo> {
         let mut apps = Vec::new();
@@ -139,18 +191,37 @@ pub mod windows {
         unsafe extern "system" fn enum_windows_callback(hwnd: *mut c_void, l_param: isize) -> i32 {
             let apps = unsafe { &mut *(l_param as *mut Vec<ProcessInfo>) };
 
+            // We want windows that are visible
             if unsafe { IsWindowVisible(hwnd) } != 0 {
-                let length = unsafe { GetWindowTextLengthW(hwnd) };
-                if length > 0 {
-                    let mut buffer = vec![0u16; length as usize + 1];
-                    let size = unsafe { GetWindowTextW(hwnd, buffer.as_mut_ptr(), length + 1) };
-                    let title = String::from_utf16_lossy(&buffer[..size as usize]);
+                let owner = unsafe { GetWindow(hwnd, GW_OWNER) };
+                
+                // Usually we want top-level windows (no owner), 
+                // but some games might have a dummy owner.
+                let mut process_id = 0;
+                unsafe { GetWindowThreadProcessId(hwnd, &mut process_id) };
+                
+                if let Some(name) = get_process_name_from_id(process_id) {
+                    let name_lower = name.to_lowercase();
+                    // Filter noise
+                    if name_lower == "explorer.exe" || name_lower == "shellexperiencehost.exe" || name_lower == "searchhost.exe" {
+                        return 1;
+                    }
 
-                    let mut process_id = 0;
-                    unsafe { GetWindowThreadProcessId(hwnd, &mut process_id) };
-                    
-                    if let Some(name) = get_process_name_from_id(process_id) {
-                        apps.push(ProcessInfo { name, title });
+                    let length = unsafe { GetWindowTextLengthW(hwnd) };
+                    let title = if length > 0 {
+                        let mut buffer = vec![0u16; length as usize + 1];
+                        let size = unsafe { GetWindowTextW(hwnd, buffer.as_mut_ptr(), length + 1) };
+                        String::from_utf16_lossy(&buffer[..size as usize])
+                    } else {
+                        // If no title, use the process name as title
+                        format!("[{}]", name)
+                    };
+
+                    // Only add if it's likely a "real" window (has a title OR no owner)
+                    if length > 0 || owner.is_null() {
+                        if !apps.iter().any(|a: &ProcessInfo| a.name == name && a.title == title) {
+                            apps.push(ProcessInfo { name, title });
+                        }
                     }
                 }
             }
@@ -161,6 +232,8 @@ pub mod windows {
             EnumWindows(enum_windows_callback, &mut apps as *mut _ as isize);
         }
 
+        // Sort by title
+        apps.sort_by(|a: &ProcessInfo, b: &ProcessInfo| a.title.to_lowercase().cmp(&b.title.to_lowercase()));
         apps
     }
 
@@ -452,7 +525,7 @@ pub mod windows {
 
     pub fn pump_messages() {}
 
-    pub fn set_device_gamma_ramp(_ramp: &[[u16; 256]; 3]) -> Result<(), String> {
+    pub fn set_device_gamma_ramp(_ramp: &[[u16; 256]; 3], _device_name: Option<&str>) -> Result<(), String> {
         Err("Gamma ramp is only supported on Windows".to_string())
     }
 
@@ -462,4 +535,3 @@ pub mod windows {
         Ok(())
     }
 }
-

@@ -194,11 +194,20 @@
     >
       <div class="modal-header">
         <h4>{i18n.t('editor.pick_app')}</h4>
-        <button class="close-modal" onclick={() => showAppPicker = false}>×</button>
+        <div class="header-actions">
+          <button class="refresh-btn" onclick={openAppPicker} disabled={appPickerLoading} title="Refresh">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+          </button>
+          <button class="close-modal" onclick={() => showAppPicker = false}>×</button>
+        </div>
       </div>
       <div class="modal-body">
         {#if appPickerLoading}
           <div class="loading">{i18n.t('app.status.loading')}</div>
+        {:else if runningApps.length === 0}
+          <div class="no-apps-found">
+            {i18n.t('editor.no_apps_found')}
+          </div>
         {:else}
           <div class="running-apps">
             {#each runningApps as app}
@@ -492,6 +501,8 @@
 
   .add-app-btn {
     align-self: flex-start;
+    box-shadow: none !important;
+    border-bottom: 2px solid var(--primary-dim) !important;
   }
 
   /* Modal Styles */
@@ -545,6 +556,46 @@
     font-size: 14px;
   }
 
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .refresh-btn {
+    background: none !important;
+    border: none !important;
+    color: var(--text-muted) !important;
+    padding: 0 !important;
+    cursor: pointer !important;
+    box-shadow: none !important;
+    transform: none !important;
+    margin: 0 !important;
+    min-width: unset !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s;
+  }
+
+  .refresh-btn:hover:not(:disabled) {
+    color: var(--primary) !important;
+  }
+
+  .refresh-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .refresh-btn:disabled svg {
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
   .close-modal {
     background: none !important;
     border: none !important;
@@ -566,11 +617,37 @@
     padding: 0;
     overflow-y: auto;
     flex: 1;
+    border-bottom-left-radius: 12px;
+    border-bottom-right-radius: 12px;
+  }
+
+  /* Custom Industrial Scrollbar */
+  .modal-body::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .modal-body::-webkit-scrollbar-track {
+    background: var(--bg-layer);
+  }
+
+  .modal-body::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 4px;
+    border: 2px solid var(--bg-layer);
+  }
+
+  .modal-body::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-dim);
   }
 
   .running-apps {
     display: flex;
     flex-direction: column;
+    border: 1px solid var(--border);
+    margin: 10px;
+    border-radius: 8px;
+    background: var(--bg-surface);
+    overflow: hidden;
   }
 
   .app-item {
@@ -619,6 +696,15 @@
     text-transform: uppercase;
     letter-spacing: 2px;
     animation: pulse 1.5s infinite;
+  }
+
+  .no-apps-found {
+    padding: 40px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 13px;
+    font-style: italic;
+    background: var(--bg-surface);
   }
 
   @keyframes pulse {

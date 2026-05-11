@@ -1,15 +1,33 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use color_schemer::auto_switch::AutoSwitchManager;
 use color_schemer::config::{AppConfig, HotkeyConfig};
 use color_schemer::hotkey::{HotkeyAction, HotkeyController};
 use color_schemer::nvidia::{DisplaySettings, GpuController, NvidiaController};
+use color_schemer::platform;
 use color_schemer::profiles::{DisplayProfile, ProfileManager};
 use crossbeam_channel::{unbounded, Sender};
 use global_hotkey::{GlobalHotKeyEvent, HotKeyState};
-use log::{error, info};
+use log::{error, info, warn};
 use serde::{Deserialize, Serialize};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
+
+static FOREGROUND_CHANGED: AtomicBool = AtomicBool::new(true);
+
+unsafe extern "system" fn win_event_proc(
+    _h_win_event_hook: *mut std::ffi::c_void,
+    _event: u32,
+    _hwnd: *mut std::ffi::c_void,
+    _id_object: i32,
+    _id_child: i32,
+    _dw_event_thread: u32,
+    _dw_ms_event_time: u32,
+) {
+    FOREGROUND_CHANGED.store(true, Ordering::SeqCst);
+    platform::windows::wake_message_loop();
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct ProfilesState {
@@ -25,6 +43,7 @@ enum HotkeyMsg {
 struct AppState {
     nvidia: Arc<dyn GpuController>,
     pm: Arc<Mutex<ProfileManager>>,
+    asm: Arc<Mutex<AutoSwitchManager>>,
     config: Arc<Mutex<AppConfig>>,
     hotkey_tx: Sender<HotkeyMsg>,
     recording_mode: Arc<Mutex<bool>>,
@@ -228,6 +247,8 @@ fn main() {
     let config = AppConfig::load();
     let start_minimized = config.start_minimized;
     let pm = Arc::new(Mutex::new(ProfileManager::new(config.profiles.clone())));
+    let initial_index = pm.lock().unwrap().current_index();
+    let asm = Arc::new(Mutex::new(AutoSwitchManager::new(initial_index)));
 
     let nvidia: Arc<dyn GpuController> = match NvidiaController::new() {
         Ok(ctrl) => Arc::new(ctrl),
@@ -262,10 +283,71 @@ fn main() {
     let (hotkey_tx, hotkey_rx) = unbounded::<HotkeyMsg>();
     let recording_mode = Arc::new(Mutex::new(false));
 
+    // Установка хука на смену фокуса
+    let hook = platform::windows::set_foreground_hook(win_event_proc);
+    let hook_raw = hook as usize;
+
+    // Background focus watcher thread
+    {
+        let nvidia_c = nvidia.clone();
+        let pm_c = pm.clone();
+        let asm_c = asm.clone();
+        let config_c = config_state.clone();
+        
+        std::thread::spawn(move || {
+            loop {
+                // Check if foreground changed
+                if FOREGROUND_CHANGED.swap(false, Ordering::SeqCst) {
+                    if let Some(process_name) = platform::windows::get_foreground_process_name() {
+                        let mut asm = asm_c.lock().unwrap();
+                        let pm = pm_c.lock().unwrap();
+                        let profiles = pm.profiles().to_vec();
+                        drop(pm);
+
+                        if let Some(target_index) = asm.evaluate_focus_change(&process_name, &profiles) {
+                            drop(asm);
+                            
+                            // Apply the profile
+                            let pm = pm_c.lock().unwrap();
+                            if let Some(profile) = pm.profiles().get(target_index) {
+                                let settings = profile.settings.clone();
+                                let target_displays = profile.target_displays.clone();
+                                drop(pm);
+                                
+                                if target_displays.is_empty() {
+                                    let _ = nvidia_c.apply_display_settings(None, &settings);
+                                } else {
+                                    for id in &target_displays {
+                                        let _ = nvidia_c.apply_display_settings(Some(id), &settings);
+                                    }
+                                }
+                                info!("Auto-switched to profile index {} for {}", target_index, process_name);
+                                
+                                // Show notification if enabled
+                                let (show_notif, lang) = {
+                                    let cfg = config_c.lock().unwrap();
+                                    (cfg.show_notifications, cfg.language.clone())
+                                };
+                                if show_notif {
+                                    color_schemer::platform::windows::show_notification(
+                                        color_schemer::i18n::t(&lang, "notif.title_auto"),
+                                        &color_schemer::i18n::t(&lang, "notif.body").replace("{}", &process_name),
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
+                std::thread::sleep(Duration::from_millis(50));
+            }
+        });
+    }
+
     // Background hotkey handler
     {
         let nvidia_c = nvidia.clone();
         let pm_c = pm.clone();
+        let asm_c = asm.clone();
         let config_c = config_state.clone(); 
         let recording_mode_c = recording_mode.clone();
         
@@ -341,7 +423,14 @@ fn main() {
                                         }
                                     }
                                 };
+                                let index = pm.current_index();
                                 drop(pm);
+                                
+                                // Notify ASM of manual switch
+                                {
+                                    let mut asm = asm_c.lock().unwrap();
+                                    asm.handle_manual_switch(index);
+                                }
                                 
                                 let _ = if profile.target_displays.is_empty() {
                                     nvidia_c.apply_display_settings(None, &profile.settings)
@@ -379,6 +468,7 @@ fn main() {
         .manage(AppState {
             nvidia,
             pm,
+            asm,
             config: config_state,
             hotkey_tx,
             recording_mode,
@@ -394,6 +484,9 @@ fn main() {
                 "quit" => {
                     info!("Quitting from tray menu");
                     let _ = nvidia_for_quit.reset(None);
+                    if hook_raw != 0 {
+                        platform::windows::unhook_event_hook(hook_raw as *mut std::ffi::c_void);
+                    }
                     std::process::exit(0);
                 }
                 "show" => {
