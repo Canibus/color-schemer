@@ -8,7 +8,7 @@ use color_schemer::platform;
 use color_schemer::profiles::{DisplayProfile, ProfileManager};
 use crossbeam_channel::{unbounded, Sender};
 use global_hotkey::{GlobalHotKeyEvent, HotKeyState};
-use log::{error, info, warn};
+use log::{error, info};
 use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
@@ -33,6 +33,11 @@ unsafe extern "system" fn win_event_proc(
 struct ProfilesState {
     profiles: Vec<DisplayProfile>,
     active_index: usize,
+}
+
+#[derive(Clone, Serialize)]
+struct ProfileChangedPayload {
+    index: usize,
 }
 
 enum HotkeyMsg {
@@ -307,181 +312,6 @@ fn main() {
     let hook = platform::windows::set_foreground_hook(win_event_proc);
     let hook_raw = hook as usize;
 
-    // Background focus watcher thread
-    {
-        let nvidia_c = nvidia.clone();
-        let pm_c = pm.clone();
-        let asm_c = asm.clone();
-        let config_c = config_state.clone();
-        
-        std::thread::spawn(move || {
-            loop {
-                // Check if foreground changed
-                if FOREGROUND_CHANGED.swap(false, Ordering::SeqCst) {
-                    if let Some(process_name) = platform::windows::get_foreground_process_name() {
-                        let mut asm = asm_c.lock().unwrap();
-                        let pm = pm_c.lock().unwrap();
-                        let profiles = pm.profiles().to_vec();
-                        drop(pm);
-
-                        if let Some(target_index) = asm.evaluate_focus_change(&process_name, &profiles) {
-                            drop(asm);
-                            
-                            // Apply the profile
-                            let pm = pm_c.lock().unwrap();
-                            if let Some(profile) = pm.profiles().get(target_index) {
-                                let settings = profile.settings.clone();
-                                let target_displays = profile.target_displays.clone();
-                                drop(pm);
-                                
-                                if target_displays.is_empty() {
-                                    let _ = nvidia_c.apply_display_settings(None, &settings);
-                                } else {
-                                    for id in &target_displays {
-                                        let _ = nvidia_c.apply_display_settings(Some(id), &settings);
-                                    }
-                                }
-                                info!("Auto-switched to profile index {} for {}", target_index, process_name);
-                                
-                                // Show notification if enabled
-                                let (show_notif, lang) = {
-                                    let cfg = config_c.lock().unwrap();
-                                    (cfg.show_notifications, cfg.language.clone())
-                                };
-                                if show_notif {
-                                    color_schemer::platform::windows::show_notification(
-                                        color_schemer::i18n::t(&lang, "notif.title_auto"),
-                                        &color_schemer::i18n::t(&lang, "notif.body").replace("{}", &process_name),
-                                    );
-                                }
-                            }
-                        }
-                    }
-                }
-                std::thread::sleep(Duration::from_millis(50));
-            }
-        });
-    }
-
-    // Background hotkey handler
-    {
-        let nvidia_c = nvidia.clone();
-        let pm_c = pm.clone();
-        let asm_c = asm.clone();
-        let config_c = config_state.clone(); 
-        let recording_mode_c = recording_mode.clone();
-        
-        std::thread::spawn(move || {
-            let mut hotkey_controller = HotkeyController::new(&config.hotkeys).ok();
-            let mut last_trigger = Instant::now();
-            let cooldown = Duration::from_millis(100);
-            
-            loop {
-                // 1. Process Windows messages (crucial for global-hotkey on Windows)
-                color_schemer::platform::windows::pump_messages();
-
-                // 2. Check for messages
-                if let Ok(msg) = hotkey_rx.try_recv() {
-                    match msg {
-                        HotkeyMsg::UpdateConfig(new_cfg) => {
-                            hotkey_controller = None;
-                            match HotkeyController::new(&new_cfg) {
-                                Ok(new_hk) => {
-                                    hotkey_controller = Some(new_hk);
-                                    info!("Hotkeys re-registered in background thread");
-                                }
-                                Err(e) => error!("Failed to re-register hotkeys: {}", e),
-                            }
-                        }
-                        HotkeyMsg::SetRecording(active) => {
-                            if active {
-                                // Clear controller to unregister everything from OS
-                                hotkey_controller = None;
-                                info!("Hotkeys unregistered for recording mode");
-                            } else {
-                                // Re-register based on CURRENT config
-                                let cfg = {
-                                    let c = config_c.lock().unwrap();
-                                    c.hotkeys.clone()
-                                };
-                                match HotkeyController::new(&cfg) {
-                                    Ok(new_hk) => {
-                                        hotkey_controller = Some(new_hk);
-                                        info!("Hotkeys re-registered after recording mode");
-                                    }
-                                    Err(e) => error!("Failed to re-register hotkeys: {}", e),
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Check for hotkey events
-                while let Ok(event) = GlobalHotKeyEvent::receiver().try_recv() {
-                    // Ignore all hotkey events if we are in recording mode in the UI
-                    if let Ok(mode) = recording_mode_c.lock() {
-                        if *mode {
-                            continue;
-                        }
-                    }
-
-                    let now = Instant::now();
-                    if event.state() == HotKeyState::Pressed && now.duration_since(last_trigger) > cooldown {
-                        last_trigger = now;
-                        
-                        if let Some(hk) = hotkey_controller.as_ref() {
-                            if let Some(action) = hk.get_action(event.id()) {
-                                let mut pm = pm_c.lock().unwrap();
-                                let profile = match action {
-                                    HotkeyAction::NextProfile => pm.next_profile().clone(),
-                                    HotkeyAction::PrevProfile => pm.prev_profile().clone(),
-                                    HotkeyAction::Reset => {
-                                        if let Some(p) = pm.set_profile(0) {
-                                            p.clone()
-                                        } else {
-                                            pm.current_profile().clone()
-                                        }
-                                    }
-                                };
-                                let index = pm.current_index();
-                                drop(pm);
-                                
-                                // Notify ASM of manual switch
-                                {
-                                    let mut asm = asm_c.lock().unwrap();
-                                    asm.handle_manual_switch(index);
-                                }
-                                
-                                let _ = if profile.target_displays.is_empty() {
-                                    nvidia_c.apply_display_settings(None, &profile.settings)
-                                } else {
-                                    for id in &profile.target_displays {
-                                        let _ = nvidia_c.apply_display_settings(Some(id), &profile.settings);
-                                    }
-                                    Ok(())
-                                };
-                                info!("Hotkey triggered: applied profile '{}'", profile.name);
-
-                                // Show notification if enabled
-                                let (show_notif, lang) = {
-                                    let cfg = config_c.lock().unwrap();
-                                    (cfg.show_notifications, cfg.language.clone())
-                                };
-                                if show_notif {
-                                    color_schemer::platform::windows::show_notification(
-                                        color_schemer::i18n::t(&lang, "notif.title"),
-                                        &color_schemer::i18n::t(&lang, "notif.body").replace("{}", &profile.name),
-                                    );
-                                }
-                            }
-                        }
-                    }
-                }
-                std::thread::sleep(Duration::from_millis(10));
-            }
-        });
-    }
-
     let nvidia_for_quit = nvidia.clone();
 
     tauri::Builder::default()
@@ -519,6 +349,186 @@ fn main() {
             _ => {}
         })
         .setup(move |app| {
+            let app_handle = app.handle();
+            let state = app.state::<AppState>();
+            
+            // Background focus watcher thread
+            {
+                let handle = app_handle.clone();
+                let nvidia_c = state.nvidia.clone();
+                let pm_c = state.pm.clone();
+                let asm_c = state.asm.clone();
+                let config_c = state.config.clone();
+                
+                std::thread::spawn(move || {
+                    loop {
+                        if FOREGROUND_CHANGED.swap(false, Ordering::SeqCst) {
+                            if let Some(process_name) = platform::windows::get_foreground_process_name() {
+                                let mut asm = asm_c.lock().unwrap();
+                                let pm = pm_c.lock().unwrap();
+                                let profiles = pm.profiles().to_vec();
+                                drop(pm);
+
+                                if let Some(target_index) = asm.evaluate_focus_change(&process_name, &profiles) {
+                                    drop(asm);
+                                    
+                                    let pm = pm_c.lock().unwrap();
+                                    if let Some(profile) = pm.profiles().get(target_index) {
+                                        let settings = profile.settings.clone();
+                                        let target_displays = profile.target_displays.clone();
+                                        drop(pm);
+                                        
+                                        if target_displays.is_empty() {
+                                            let _ = nvidia_c.apply_display_settings(None, &settings);
+                                        } else {
+                                            for id in &target_displays {
+                                                let _ = nvidia_c.apply_display_settings(Some(id), &settings);
+                                            }
+                                        }
+                                        info!("Auto-switched to profile index {} for {}", target_index, process_name);
+                                        
+                                        // Notify frontend
+                                        let _ = handle.emit_all("profile-changed", ProfileChangedPayload { index: target_index });
+                                        
+                                        let (show_notif, lang) = {
+                                            let cfg = config_c.lock().unwrap();
+                                            (cfg.show_notifications, cfg.language.clone())
+                                        };
+                                        if show_notif {
+                                            color_schemer::platform::windows::show_notification(
+                                                color_schemer::i18n::t(&lang, "notif.title_auto"),
+                                                &color_schemer::i18n::t(&lang, "notif.body").replace("{}", &process_name),
+                                            );
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        std::thread::sleep(Duration::from_millis(50));
+                    }
+                });
+            }
+
+            // Background hotkey handler
+            {
+                let handle = app_handle.clone();
+                let nvidia_c = state.nvidia.clone();
+                let pm_c = state.pm.clone();
+                let asm_c = state.asm.clone();
+                let config_c = state.config.clone(); 
+                let recording_mode_c = state.recording_mode.clone();
+                let hotkey_rx = hotkey_rx;
+                
+                std::thread::spawn(move || {
+                    let initial_hotkeys = {
+                        let cfg = config_c.lock().unwrap();
+                        cfg.hotkeys.clone()
+                    };
+                    let mut hotkey_controller = HotkeyController::new(&initial_hotkeys).ok();
+                    let mut last_trigger = Instant::now();
+                    let cooldown = Duration::from_millis(100);
+                    
+                    loop {
+                        color_schemer::platform::windows::pump_messages();
+
+                        if let Ok(msg) = hotkey_rx.try_recv() {
+                            match msg {
+                                HotkeyMsg::UpdateConfig(new_cfg) => {
+                                    hotkey_controller = None;
+                                    match HotkeyController::new(&new_cfg) {
+                                        Ok(new_hk) => {
+                                            hotkey_controller = Some(new_hk);
+                                            info!("Hotkeys re-registered in background thread");
+                                        }
+                                        Err(e) => error!("Failed to re-register hotkeys: {}", e),
+                                    }
+                                }
+                                HotkeyMsg::SetRecording(active) => {
+                                    if active {
+                                        hotkey_controller = None;
+                                        info!("Hotkeys unregistered for recording mode");
+                                    } else {
+                                        let cfg = {
+                                            let c = config_c.lock().unwrap();
+                                            c.hotkeys.clone()
+                                        };
+                                        match HotkeyController::new(&cfg) {
+                                            Ok(new_hk) => {
+                                                hotkey_controller = Some(new_hk);
+                                                info!("Hotkeys re-registered after recording mode");
+                                            }
+                                            Err(e) => error!("Failed to re-register hotkeys: {}", e),
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        while let Ok(event) = GlobalHotKeyEvent::receiver().try_recv() {
+                            if let Ok(mode) = recording_mode_c.lock() {
+                                if *mode {
+                                    continue;
+                                }
+                            }
+
+                            let now = Instant::now();
+                            if event.state() == HotKeyState::Pressed && now.duration_since(last_trigger) > cooldown {
+                                last_trigger = now;
+                                
+                                if let Some(hk) = hotkey_controller.as_ref() {
+                                    if let Some(action) = hk.get_action(event.id()) {
+                                        let mut pm = pm_c.lock().unwrap();
+                                        let profile = match action {
+                                            HotkeyAction::NextProfile => pm.next_profile().clone(),
+                                            HotkeyAction::PrevProfile => pm.prev_profile().clone(),
+                                            HotkeyAction::Reset => {
+                                                if let Some(p) = pm.set_profile(0) {
+                                                    p.clone()
+                                                } else {
+                                                    pm.current_profile().clone()
+                                                }
+                                            }
+                                        };
+                                        let index = pm.current_index();
+                                        drop(pm);
+                                        
+                                        {
+                                            let mut asm = asm_c.lock().unwrap();
+                                            asm.handle_manual_switch(index);
+                                        }
+                                        
+                                        let _ = if profile.target_displays.is_empty() {
+                                            nvidia_c.apply_display_settings(None, &profile.settings)
+                                        } else {
+                                            for id in &profile.target_displays {
+                                                let _ = nvidia_c.apply_display_settings(Some(id), &profile.settings);
+                                            }
+                                            Ok(())
+                                        };
+                                        info!("Hotkey triggered: applied profile '{}'", profile.name);
+
+                                        // Notify frontend
+                                        let _ = handle.emit_all("profile-changed", ProfileChangedPayload { index });
+
+                                        let (show_notif, lang) = {
+                                            let cfg = config_c.lock().unwrap();
+                                            (cfg.show_notifications, cfg.language.clone())
+                                        };
+                                        if show_notif {
+                                            color_schemer::platform::windows::show_notification(
+                                                color_schemer::i18n::t(&lang, "notif.title"),
+                                                &color_schemer::i18n::t(&lang, "notif.body").replace("{}", &profile.name),
+                                            );
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        std::thread::sleep(Duration::from_millis(10));
+                    }
+                });
+            }
+
             if !start_minimized {
                 if let Some(window) = app.get_window("main") {
                     let _ = window.show();

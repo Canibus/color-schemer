@@ -3,6 +3,7 @@
   import { onMount } from "svelte";
   import "./theme.css";
   import { invoke } from "@tauri-apps/api/tauri";
+  import { listen } from "@tauri-apps/api/event";
   import { appWindow } from "@tauri-apps/api/window";
   import type { DisplayProfile, AppConfig, DisplaySettings, DisplayInfo } from "./lib/types";
   import ProfileList from "./lib/ProfileList.svelte";
@@ -58,7 +59,19 @@
     }
   }
 
-  onMount(loadState);
+  onMount(() => {
+    loadState();
+    
+    // Listen for profile changes from hotkeys or auto-switch
+    const unlisten = listen<{ index: number }>("profile-changed", (event) => {
+        console.log("Profile changed via background task:", event.payload);
+        activeIndex = event.payload.index;
+    });
+    
+    return () => {
+        unlisten.then(f => f());
+    };
+  });
 
   async function applyProfile(index: number) {
       status = i18n.t("app.status.applying");
