@@ -269,16 +269,16 @@
   .brand {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
   }
   .logo {
-    width: 24px;
-    height: 24px;
+    width: 32px;
+    height: 32px;
     filter: drop-shadow(0 0 5px var(--primary-glow));
   }
   h1 {
     margin: 0;
-    font-size: 18px;
+    font-size: 20px;
     color: var(--primary);
     text-transform: uppercase;
     letter-spacing: 1px;
