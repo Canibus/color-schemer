@@ -258,7 +258,7 @@ fn test_mock_failure_mode() {
     let mock = MockGpuController::new();
     mock.set_should_fail(true);
 
-    let result = mock.apply_display_settings(&DisplaySettings::default());
+    let result = mock.apply_display_settings(None, &DisplaySettings::default());
     assert!(result.is_err());
 }
 
@@ -266,31 +266,31 @@ fn test_mock_failure_mode() {
 fn test_mock_vibrance_tracking() {
     let mock = MockGpuController::new();
 
-    mock.set_digital_vibrance(50).unwrap();
-    assert_eq!(mock.get_digital_vibrance().unwrap().current_level, 50);
+    mock.set_digital_vibrance(0, 50).unwrap();
+    assert_eq!(mock.get_digital_vibrance(0).unwrap().current_level, 50);
 
-    mock.set_digital_vibrance(-100).unwrap();
-    assert_eq!(mock.get_digital_vibrance().unwrap().current_level, -100);
+    mock.set_digital_vibrance(0, -100).unwrap();
+    assert_eq!(mock.get_digital_vibrance(0).unwrap().current_level, -100);
 }
 
 #[test]
 fn test_mock_reset() {
     let mock = MockGpuController::new();
 
-    mock.set_digital_vibrance(50).unwrap();
-    mock.reset().unwrap();
+    mock.set_digital_vibrance(0, 50).unwrap();
+    mock.reset(None).unwrap();
 
-    assert_eq!(mock.get_digital_vibrance().unwrap().current_level, 0);
+    assert_eq!(mock.get_digital_vibrance(0).unwrap().current_level, 0);
 }
 
 #[test]
 fn test_mock_multiple_calls_tracked() {
     let mock = MockGpuController::new();
 
-    mock.apply_display_settings(&DisplaySettings::default())
+    mock.apply_display_settings(None, &DisplaySettings::default())
         .unwrap();
-    mock.set_digital_vibrance(10).unwrap();
-    mock.reset().unwrap();
+    mock.set_digital_vibrance(0, 10).unwrap();
+    mock.reset(None).unwrap();
 
     assert_eq!(mock.call_count(), 3);
 }

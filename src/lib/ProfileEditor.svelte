@@ -178,8 +178,20 @@
 </div>
 
 {#if showAppPicker}
-  <div class="modal-overlay" onclick={() => showAppPicker = false}>
-    <div class="modal-content" onclick={(e) => e.stopPropagation()}>
+  <div 
+    class="modal-overlay" 
+    onclick={() => showAppPicker = false} 
+    onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') showAppPicker = false; }}
+    role="button" 
+    tabindex="0"
+  >
+    <div 
+      class="modal-content" 
+      onclick={(e) => e.stopPropagation()} 
+      onkeydown={(e) => e.stopPropagation()}
+      role="button"
+      tabindex="-1"
+    >
       <div class="modal-header">
         <h4>{i18n.t('editor.pick_app')}</h4>
         <button class="close-modal" onclick={() => showAppPicker = false}>×</button>
