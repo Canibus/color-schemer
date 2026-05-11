@@ -3,6 +3,7 @@
   import type { DisplayInfo, DisplayProfile, DisplaySettings, ProcessInfo } from "./types";
   import { i18n } from "./i18n.svelte";
   import { invoke } from "@tauri-apps/api/tauri";
+  import { untrack } from "svelte";
   
   let { 
     profile, 
@@ -22,13 +23,13 @@
 
   // Local copy for editing
   function createEditableCopy(p: DisplayProfile): DisplayProfile {
-      const copy = JSON.parse(JSON.stringify(p)) as DisplayProfile;
+      const copy = $state.snapshot(p);
       if (!copy.target_displays) copy.target_displays = [];
       if (!copy.applications) copy.applications = [];
       return copy;
   }
 
-  let edited = $state(createEditableCopy(profile));
+  let edited = $state(untrack(() => createEditableCopy(profile)));
   
   // App picker state
   let runningApps = $state<ProcessInfo[]>([]);

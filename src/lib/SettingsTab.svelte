@@ -3,6 +3,7 @@
   import { invoke } from "@tauri-apps/api/tauri";
   import type { AppConfig, HotkeyConfig } from "./types";
   import { i18n } from "./i18n.svelte";
+  import { untrack } from "svelte";
   
   let { 
     config, 
@@ -12,12 +13,12 @@
     onSave: (updated: AppConfig) => void;
   }>();
 
-  let edited = $state(JSON.parse(JSON.stringify(config)) as AppConfig);
+  let edited = $state(untrack(() => $state.snapshot(config)));
   let recordingKey = $state<keyof HotkeyConfig | null>(null);
 
   $effect(() => {
     // We update 'edited' only when the 'config' prop changes from outside
-    edited = JSON.parse(JSON.stringify(config)) as AppConfig;
+    edited = $state.snapshot(config);
   });
 
   function handleLanguageChange() {
