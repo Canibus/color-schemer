@@ -154,9 +154,13 @@ impl AppConfig {
     /// Загрузить из произвольного пути (для тестирования)
     pub fn load_from(path: &std::path::Path) -> Self {
         match fs::read_to_string(path) {
-            Ok(content) => match toml::from_str(&content) {
-                Ok(config) => {
+            Ok(content) => match toml::from_str::<Self>(&content) {
+                Ok(mut config) => {
                     info!("Конфигурация загружена из {:?}", path);
+                    // Sanitize all profiles after loading
+                    for profile in &mut config.profiles {
+                        profile.sanitize();
+                    }
                     config
                 }
                 Err(e) => {
