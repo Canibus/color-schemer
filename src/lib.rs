@@ -4,6 +4,7 @@ pub mod mock_gpu;
 pub mod nvidia;
 pub mod platform;
 pub mod profiles;
+pub mod auto_switch;
 
 #[cfg(feature = "hotkeys")]
 pub mod hotkey;
