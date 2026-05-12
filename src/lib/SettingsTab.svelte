@@ -98,6 +98,9 @@
       edited.hotkeys = newHotkeys;
       recordingKey = null;
       await invoke("set_recording_mode", { active: false });
+
+      // Auto-save the new hotkey configuration
+      onSave(edited);
   }
 </script>
 
