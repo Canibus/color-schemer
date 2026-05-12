@@ -247,9 +247,11 @@ pub mod windows {
                 unsafe { GetWindowThreadProcessId(hwnd, &mut process_id) };
                 
                 if let Some(name) = get_process_name_from_id(process_id) {
-                    let name_lower = name.to_lowercase();
                     // Filter noise
-                    if name_lower == "explorer.exe" || name_lower == "shellexperiencehost.exe" || name_lower == "searchhost.exe" {
+                    if name.eq_ignore_ascii_case("explorer.exe")
+                        || name.eq_ignore_ascii_case("shellexperiencehost.exe")
+                        || name.eq_ignore_ascii_case("searchhost.exe")
+                    {
                         return 1;
                     }
 

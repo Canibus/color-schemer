@@ -137,7 +137,9 @@ impl AppConfig {
                 }
                 Err(e) => {
                     warn!("Parse error: {}. Backing up corrupted config and using defaults.", e);
-                    let _ = fs::rename(path, path.with_extension("toml.bak"));
+                    if let Err(err) = fs::rename(path, path.with_extension("toml.bak")) {
+                        warn!("Failed to back up corrupted config: {}", err);
+                    }
                     Self::default()
                 }
             },

@@ -262,10 +262,9 @@ fn main() {
             if let Some(process_name) = platform::windows::get_foreground_process_name() {
                 let mut asm = lock_auto_switch_manager(&auto_switch_manager);
                 let pm = lock_profile_manager(&profile_manager);
-                let profiles = pm.profiles().to_vec();
-                drop(pm);
 
-                if let Some(target_index) = asm.evaluate_focus_change(&process_name, &profiles) {
+                if let Some(target_index) = asm.evaluate_focus_change(&process_name, pm.profiles()) {
+                    drop(pm);
                     drop(asm);
                     apply_profile_internal(
                         target_index,

@@ -47,11 +47,10 @@ impl AutoSwitchManager {
 
         self.last_process = process_name.to_string();
 
-        let process_name_lower = process_name.to_lowercase();
         let matched_index = profiles.iter().position(|p| {
             p.applications
                 .iter()
-                .any(|app| app.to_lowercase() == process_name_lower)
+                .any(|app| app.eq_ignore_ascii_case(process_name))
         });
 
         if matched_index != self.active_auto_index {

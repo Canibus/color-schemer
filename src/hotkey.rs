@@ -98,27 +98,19 @@ fn parse_hotkey(input: &str) -> Result<HotKey, String> {
     let mut key: Option<Code> = None;
 
     for part in raw.split('+').map(|s| s.trim()).filter(|s| !s.is_empty()) {
-        let token = part.to_ascii_lowercase();
-
-        match token.as_str() {
-            "ctrl" | "control" => {
-                mods |= Modifiers::CONTROL;
-                continue;
-            }
-            "shift" => {
-                mods |= Modifiers::SHIFT;
-                continue;
-            }
-            "alt" => {
-                mods |= Modifiers::ALT;
-                continue;
-            }
+        if part.eq_ignore_ascii_case("ctrl") || part.eq_ignore_ascii_case("control") {
+            mods |= Modifiers::CONTROL;
+            continue;
+        } else if part.eq_ignore_ascii_case("shift") {
+            mods |= Modifiers::SHIFT;
+            continue;
+        } else if part.eq_ignore_ascii_case("alt") {
+            mods |= Modifiers::ALT;
+            continue;
+        } else if part.eq_ignore_ascii_case("win") || part.eq_ignore_ascii_case("meta") || part.eq_ignore_ascii_case("super") {
             // On Windows this maps to the Win/Super key.
-            "win" | "meta" | "super" => {
-                mods |= Modifiers::META;
-                continue;
-            }
-            _ => {}
+            mods |= Modifiers::META;
+            continue;
         }
 
         if key.is_some() {
@@ -147,9 +139,7 @@ fn parse_code(token: &str) -> Option<Code> {
         return None;
     }
 
-    let lower = t.to_ascii_lowercase();
-
-    if let Some(rest) = lower.strip_prefix('f') {
+    if let Some(rest) = t.strip_prefix('f').or_else(|| t.strip_prefix('F')) {
         if let Ok(n) = rest.parse::<u8>() {
             return match n {
                 1 => Some(Code::F1),
@@ -181,8 +171,8 @@ fn parse_code(token: &str) -> Option<Code> {
         }
     }
 
-    if lower.len() == 1 {
-        let c = lower.chars().next()?;
+    if t.len() == 1 {
+        let c = t.chars().next()?.to_ascii_lowercase();
         return match c {
             'a' => Some(Code::KeyA),
             'b' => Some(Code::KeyB),
