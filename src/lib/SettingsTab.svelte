@@ -205,10 +205,6 @@
         </button>
     </div>
   </div>
-
-  <div class="actions">
-      <button class="save-btn" onclick={() => onSave(edited)}>{i18n.t('settings.save')}</button>
-  </div>
 </div>
 
 <style>
@@ -423,25 +419,5 @@
   .reset-btn:hover {
       background: var(--error);
       box-shadow: 0 0 10px var(--error-glow);
-  }
-
-  .actions { 
-    display: flex; 
-    justify-content: flex-end; 
-    margin-top: 10px; 
-  }
-  .save-btn {
-    background: var(--primary);
-    color: var(--bg-surface);
-    border: none;
-    padding: 10px 24px;
-    border-radius: 8px;
-    font-weight: bold;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-  .save-btn:hover {
-    filter: brightness(1.1);
-    box-shadow: var(--glow-shadow);
   }
 </style>
