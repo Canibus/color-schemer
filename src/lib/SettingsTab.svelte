@@ -169,11 +169,11 @@
       <div class="group-label">{i18n.t('settings.behavior')}</div>
       <div class="group-content">
           <label class="checkbox-label">
-              <input type="checkbox" bind:checked={edited.auto_start} />
+              <input type="checkbox" bind:checked={edited.auto_start} onchange={() => onSave(edited)} />
               {i18n.t('settings.autostart')}
           </label>
           <label class="checkbox-label">
-              <input type="checkbox" bind:checked={edited.start_minimized} />
+              <input type="checkbox" bind:checked={edited.start_minimized} onchange={() => onSave(edited)} />
               {i18n.t('settings.minimized')}
           </label>
       </div>
