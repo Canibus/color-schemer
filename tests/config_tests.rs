@@ -268,3 +268,11 @@ fn test_config_load_sanitizes_profiles() {
 
     let _ = std::fs::remove_file(temp_path);
 }
+
+#[test]
+fn test_config_path_format() {
+    let path = AppConfig::config_path();
+    let path_str = path.to_string_lossy();
+    assert!(path_str.contains("canibus"));
+    assert!(path_str.contains("ColorSchemer"));
+}

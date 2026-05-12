@@ -103,7 +103,7 @@ impl Default for AppConfig {
 }
 
 impl AppConfig {
-    fn config_path() -> PathBuf {
+    pub fn config_path() -> PathBuf {
         // 1. Try to find config next to .exe (portable mode)
         if let Ok(exe_path) = std::env::current_exe() {
             if let Some(exe_dir) = exe_path.parent() {
@@ -115,7 +115,7 @@ impl AppConfig {
         }
 
         // 2. Otherwise use standard AppData folder for installed application
-        if let Some(proj_dirs) = directories::ProjectDirs::from("com", "ColorSchemer", "ColorSchemer") {
+        if let Some(proj_dirs) = directories::ProjectDirs::from("io.github.canibus", "canibus", "ColorSchemer") {
             proj_dirs.config_dir().join("config.toml")
         } else {
             // Fallback to current directory
