@@ -41,7 +41,7 @@ pub struct ProfileManager {
 
 impl ProfileManager {
     pub fn new(profiles: Vec<DisplayProfile>) -> Self {
-        assert!(!profiles.is_empty(), "Нужен хотя бы один профиль");
+        assert!(!profiles.is_empty(), "At least one profile is required");
         Self {
             profiles,
             current_index: 0,
@@ -60,7 +60,7 @@ impl ProfileManager {
         let next = (self.current_index + 1) % self.profiles.len();
         self.current_index = next;
         info!(
-            "Переключение на профиль: {} ({})",
+            "Switching to profile: {} ({})",
             self.profiles[next].name, self.profiles[next].description
         );
         &self.profiles[next]

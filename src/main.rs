@@ -56,12 +56,12 @@ fn apply_profile_internal(
         match res {
             Ok(()) => {
                 info!(
-                    "Профиль применён{}: {}",
-                    if is_auto { " (авто)" } else { "" },
+                    "Profile applied{}: {}",
+                    if is_auto { " (auto)" } else { "" },
                     name
                 );
             }
-            Err(e) => error!("Ошибка применения профиля '{}': {}", name, e),
+            Err(e) => error!("Error applying profile '{}': {}", name, e),
         }
     }
 }
@@ -105,9 +105,9 @@ fn handle_menu_event(
 ) -> bool {
     match id {
         "quit" => {
-            info!("Выход из приложения");
+            info!("Quitting application");
             let _ = nvidia.reset(None);
-            return true; // сигнал на выход
+            return true; // signal to exit
         }
         "next_profile" => {
             handle_action(HotkeyAction::NextProfile, nvidia, pm, asm);
@@ -129,7 +129,7 @@ fn handle_menu_event(
         }
         _ => {}
     }
-    false // не выходим
+    false // don't exit
 }
 
 fn lock_profile_manager(pm: &Arc<Mutex<ProfileManager>>) -> MutexGuard<'_, ProfileManager> {
@@ -169,18 +169,18 @@ fn main() {
     info!("=== NVIDIA Profile Switcher ===");
 
     let config = AppConfig::load();
-    info!("Загружено {} профилей", config.profiles.len());
+    info!("Loaded {} profiles", config.profiles.len());
 
     // Ensure auto-start registry key matches config (especially on first launch or if exe moved)
     let _ = platform::windows::update_auto_start(config.auto_start);
 
     let nvidia = match NvidiaController::new() {
         Ok(ctrl) => {
-            info!("NVIDIA контроллер инициализирован");
+            info!("NVIDIA controller initialized");
             Arc::new(ctrl)
         }
         Err(e) => {
-            error!("Ошибка инициализации NVIDIA: {}", e);
+            error!("NVIDIA initialization error: {}", e);
             return;
         }
     };
@@ -192,11 +192,11 @@ fn main() {
     };
     let auto_switch_manager = Arc::new(Mutex::new(AutoSwitchManager::new(initial_index)));
 
-    // Применяем начальный профиль
+    // Apply initial profile
     let _initial_profile_name = {
         let pm = lock_profile_manager(&profile_manager);
         let profile = pm.current_profile();
-        info!("Начальный профиль: {}", profile.name);
+        info!("Initial profile: {}", profile.name);
 
         let res = if profile.target_displays.is_empty() {
             nvidia.apply_display_settings(None, &profile.settings)
@@ -208,24 +208,24 @@ fn main() {
         };
 
         if let Err(e) = res {
-            warn!("Не удалось применить начальный профиль: {}", e);
+            warn!("Failed to apply initial profile: {}", e);
         }
         profile.name.clone()
     };
 
-    // Регистрируем хоткеи В ГЛАВНОМ ПОТОКЕ
+    // Register hotkeys IN MAIN THREAD
     let hotkey_controller = match HotkeyController::new(&config.hotkeys) {
         Ok(hk) => {
-            info!("Горячие клавиши зарегистрированы");
+            info!("Hotkeys registered");
             hk
         }
         Err(e) => {
-            error!("Ошибка регистрации горячих клавиш: {}", e);
+            error!("Hotkey registration error: {}", e);
             return;
         }
     };
 
-    // Создаём tray В ГЛАВНОМ ПОТОКЕ
+    // Create tray IN MAIN THREAD
     let profile_names: Vec<String> = {
         let pm = lock_profile_manager(&profile_manager);
         pm.profiles().iter().map(|p| p.name.clone()).collect()
@@ -234,30 +234,30 @@ fn main() {
     let _tray = match TrayController::new(&profile_names) {
         Ok(t) => t,
         Err(e) => {
-            error!("Ошибка создания tray icon: {}", e);
+            error!("Tray icon creation error: {}", e);
             return;
         }
     };
 
-    // Установка хука на смену фокуса
+    // Set foreground window change hook
     let hook = platform::windows::set_foreground_hook(win_event_proc);
 
-    info!("Приложение запущено.");
-    info!("Ctrl+Shift+F5 — следующий профиль");
-    info!("Ctrl+Shift+F6 — предыдущий профиль");
-    info!("Ctrl+Shift+F7 — сброс");
+    info!("Application started.");
+    info!("Ctrl+Shift+F5 - next profile");
+    info!("Ctrl+Shift+F6 - previous profile");
+    info!("Ctrl+Shift+F7 - reset");
 
     // =========================================================
-    // Единый цикл: блокирующее ожидание сообщений
+    // Single loop: blocking message wait
     // =========================================================
     let mut last_trigger = Instant::now();
     let cooldown = Duration::from_millis(300);
 
     loop {
-        // 1. Прокачиваем Windows-сообщения (нужно для хоткеев и трея)
+        // 1. Pump Windows messages (needed for hotkeys and tray)
         platform::windows::pump_messages();
 
-        // 2. Обработка авто-переключения
+        // 2. Handle auto-switching
         if FOREGROUND_CHANGED.swap(false, Ordering::SeqCst) {
             if let Some(process_name) = platform::windows::get_foreground_process_name() {
                 let mut asm = lock_auto_switch_manager(&auto_switch_manager);
@@ -277,7 +277,7 @@ fn main() {
             }
         }
 
-        // 3. Обработка горячих клавиш
+        // 3. Handle hotkeys
         while let Ok(event) = GlobalHotKeyEvent::receiver().try_recv() {
             let now = Instant::now();
 
@@ -294,7 +294,7 @@ fn main() {
             }
         }
 
-        // 4. Обработка событий меню трея
+        // 4. Handle tray menu events
         let mut should_quit = false;
         while let Ok(event) = MenuEvent::receiver().try_recv() {
             let id = event.id().0.as_str();
@@ -312,7 +312,7 @@ fn main() {
             break;
         }
 
-        // 5. Ждём следующее сообщение (0% CPU в простое)
+        // 5. Wait for next message (0% CPU at idle)
         platform::windows::wait_message();
     }
 
@@ -320,5 +320,5 @@ fn main() {
         platform::windows::unhook_event_hook(hook);
     }
 
-    info!("Приложение завершено");
+    info!("Application finished");
 }

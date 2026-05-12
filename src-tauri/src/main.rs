@@ -256,6 +256,53 @@ fn get_running_apps() -> Result<Vec<color_schemer::platform::windows::ProcessInf
     Ok(color_schemer::platform::windows::get_running_apps())
 }
 
+#[tauri::command]
+fn get_gpu_info(state: tauri::State<'_, AppState>) -> color_schemer::nvidia::GpuInfo {
+    state.nvidia.get_info()
+}
+
+#[tauri::command]
+fn reset_to_defaults(state: tauri::State<'_, AppState>) -> Result<AppConfig, String> {
+    let mut default_cfg = AppConfig::default();
+    
+    // We might want to preserve the language if the user already changed it?
+    // Actually, "Factory Reset" usually means everything back to defaults.
+    // Let's stick to full defaults.
+    
+    default_cfg.save();
+
+    // Update hotkeys
+    if let Err(e) = state.hotkey_tx.send(HotkeyMsg::UpdateConfig(default_cfg.hotkeys.clone())) {
+        error!("Failed to send hotkey update message: {}", e);
+    }
+
+    // Update registry
+    color_schemer::platform::windows::update_auto_start(default_cfg.auto_start)?;
+
+    // Update in-memory state
+    {
+        let mut cfg = lock_cfg(&state.config);
+        *cfg = default_cfg.clone();
+    }
+    {
+        let mut pm = lock_pm(&state.pm);
+        *pm = ProfileManager::new(default_cfg.profiles.clone());
+        
+        // Apply default profile
+        let profile = pm.current_profile();
+        let settings = &profile.settings;
+        if profile.target_displays.is_empty() {
+            state.nvidia.apply_display_settings(None, settings).map_err(|e| e.to_string())?;
+        } else {
+            for id in &profile.target_displays {
+                let _ = state.nvidia.apply_display_settings(Some(id), settings);
+            }
+        }
+    }
+
+    Ok(default_cfg)
+}
+
 use tauri::{CustomMenuItem, Manager, SystemTray, SystemTrayEvent, SystemTrayMenu, SystemTrayMenuItem};
 
 fn main() {
@@ -314,7 +361,7 @@ fn main() {
     let (hotkey_tx, hotkey_rx) = unbounded::<HotkeyMsg>();
     let recording_mode = Arc::new(Mutex::new(false));
 
-    // Установка хука на смену фокуса
+    // Set foreground window change hook
     let hook = platform::windows::set_foreground_hook(win_event_proc);
     let hook_raw = hook as usize;
 
@@ -542,7 +589,9 @@ fn main() {
             save_config,
             preview_settings,
             set_recording_mode,
-            get_running_apps
+            get_running_apps,
+            get_gpu_info,
+            reset_to_defaults
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

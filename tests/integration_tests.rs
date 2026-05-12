@@ -34,7 +34,7 @@ fn test_switch_applies_correct_settings() {
     let gpu = MockGpuController::new();
     let mut pm = ProfileManager::new(test_profiles());
 
-    // Начальный профиль
+    // Initial profile
     gpu.apply_display_settings(None, &pm.current_profile().settings)
         .unwrap();
     assert!(gpu.last_settings().unwrap().is_default());
@@ -69,13 +69,13 @@ fn test_reset_to_default() {
     let gpu = MockGpuController::new();
     let mut pm = ProfileManager::new(test_profiles());
 
-    // Переключаемся на Gaming
+    // Switch to Gaming
     pm.next_profile();
     gpu.apply_display_settings(None, &pm.current_profile().settings)
         .unwrap();
     assert_eq!(gpu.last_settings().unwrap().brightness, 1.2);
 
-    // Сброс
+    // Reset
     let p = pm.set_profile(0).unwrap();
     gpu.apply_display_settings(None, &p.settings).unwrap();
     assert!(gpu.last_settings().unwrap().is_default());
@@ -92,7 +92,7 @@ fn test_gpu_failure_does_not_affect_profile_state() {
     let result = gpu.apply_display_settings(None, &p.settings);
 
     assert!(result.is_err());
-    // ProfileManager всё равно переключился
+    // ProfileManager should still switch
     assert_eq!(pm.current_index(), 1);
 }
 

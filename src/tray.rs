@@ -4,7 +4,7 @@ use tray_icon::{
     menu::{Menu, MenuItem, PredefinedMenuItem, Submenu},
 };
 
-/// ID элементов меню
+/// Menu item IDs
 pub const MENU_QUIT: &str = "quit";
 pub const MENU_NEXT: &str = "next_profile";
 pub const MENU_PREV: &str = "prev_profile";
@@ -18,8 +18,8 @@ impl TrayController {
     pub fn new(profile_names: &[String]) -> Result<Self, String> {
         let menu = Menu::new();
 
-        // Подменю профилей
-        let profiles_submenu = Submenu::new("Профили", true);
+        // Profiles submenu
+        let profiles_submenu = Submenu::new("Profiles", true);
         for (i, name) in profile_names.iter().enumerate() {
             let item = MenuItem::with_id(format!("profile_{}", i), name, true, None);
             profiles_submenu
@@ -28,11 +28,11 @@ impl TrayController {
         }
 
         let next_item =
-            MenuItem::with_id(MENU_NEXT, "Следующий профиль (Ctrl+Shift+F5)", true, None);
+            MenuItem::with_id(MENU_NEXT, "Next Profile (Ctrl+Shift+F5)", true, None);
         let prev_item =
-            MenuItem::with_id(MENU_PREV, "Предыдущий профиль (Ctrl+Shift+F6)", true, None);
-        let reset_item = MenuItem::with_id(MENU_RESET, "Сброс (Ctrl+Shift+F7)", true, None);
-        let quit_item = MenuItem::with_id(MENU_QUIT, "Выход", true, None);
+            MenuItem::with_id(MENU_PREV, "Previous Profile (Ctrl+Shift+F6)", true, None);
+        let reset_item = MenuItem::with_id(MENU_RESET, "Reset (Ctrl+Shift+F7)", true, None);
+        let quit_item = MenuItem::with_id(MENU_QUIT, "Quit", true, None);
 
         menu.append(&profiles_submenu).map_err(|e| e.to_string())?;
         menu.append(&PredefinedMenuItem::separator())
@@ -44,7 +44,7 @@ impl TrayController {
             .map_err(|e| e.to_string())?;
         menu.append(&quit_item).map_err(|e| e.to_string())?;
 
-        // Создаём иконку (простая иконка из пикселей)
+        // Create icon (simple pixel icon)
         let icon = create_default_icon()?;
 
         let tray = TrayIconBuilder::new()
@@ -52,15 +52,15 @@ impl TrayController {
             .with_tooltip("NVIDIA Profile Switcher")
             .with_icon(icon)
             .build()
-            .map_err(|e| format!("Не удалось создать tray icon: {}", e))?;
+            .map_err(|e| format!("Failed to create tray icon: {}", e))?;
 
-        info!("Tray icon создан");
+        info!("Tray icon created");
 
         Ok(Self { _tray: tray })
     }
 }
 
-/// Создание простой иконки 32x32 (зелёный квадрат с буквой N)
+/// Create a simple 32x32 icon (green square with letter N)
 fn create_default_icon() -> Result<Icon, String> {
     let size = 32u32;
     let mut rgba = vec![0u8; (size * size * 4) as usize];
@@ -69,14 +69,14 @@ fn create_default_icon() -> Result<Icon, String> {
         for x in 0..size {
             let idx = ((y * size + x) * 4) as usize;
 
-            // Фон - тёмно-зелёный
+            // Background - dark green
             if x >= 2 && x < size - 2 && y >= 2 && y < size - 2 {
                 rgba[idx] = 0x76; // R
                 rgba[idx + 1] = 0xB9; // G
                 rgba[idx + 2] = 0x00; // B (NVIDIA green)
                 rgba[idx + 3] = 255; // A
             } else {
-                // Рамка
+                // Border
                 rgba[idx] = 0x50;
                 rgba[idx + 1] = 0x80;
                 rgba[idx + 2] = 0x00;
@@ -85,22 +85,22 @@ fn create_default_icon() -> Result<Icon, String> {
         }
     }
 
-    // Рисуем букву "N" белым цветом (упрощённо)
+    // Draw letter "N" in white (simplified)
     let letter_coords: Vec<(u32, u32)> = {
         let mut coords = Vec::new();
-        // Левая вертикальная линия
+        // Left vertical line
         for y in 8..24 {
             for x in 9..13 {
                 coords.push((x, y));
             }
         }
-        // Правая вертикальная линия
+        // Right vertical line
         for y in 8..24 {
             for x in 20..24 {
                 coords.push((x, y));
             }
         }
-        // Диагональ
+        // Diagonal
         for i in 0..16 {
             let x = 9 + i;
             let y = 8 + i;
@@ -124,5 +124,5 @@ fn create_default_icon() -> Result<Icon, String> {
         }
     }
 
-    Icon::from_rgba(rgba, size, size).map_err(|e| format!("Не удалось создать иконку: {}", e))
+    Icon::from_rgba(rgba, size, size).map_err(|e| format!("Failed to create icon: {}", e))
 }

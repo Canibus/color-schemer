@@ -17,7 +17,7 @@ fn make_profiles(count: usize) -> Vec<DisplayProfile> {
 }
 
 // ============================================================
-// Создание
+// Creation
 // ============================================================
 
 #[test]
@@ -28,7 +28,7 @@ fn test_create_manager() {
 }
 
 #[test]
-#[should_panic(expected = "Нужен хотя бы один профиль")]
+#[should_panic(expected = "At least one profile is required")]
 fn test_create_empty_panics() {
     ProfileManager::new(vec![]);
 }
@@ -41,7 +41,7 @@ fn test_single_profile() {
 }
 
 // ============================================================
-// Навигация вперёд
+// Navigation forward
 // ============================================================
 
 #[test]
@@ -57,7 +57,7 @@ fn test_next_cycles_through_all() {
     assert_eq!(pm.current_index(), 2);
 
     pm.next_profile();
-    assert_eq!(pm.current_index(), 0); // цикл
+    assert_eq!(pm.current_index(), 0); // cycle
 }
 
 #[test]

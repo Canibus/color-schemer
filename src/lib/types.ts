@@ -12,6 +12,11 @@ export type DisplayInfo = {
     is_primary: boolean;
 };
 
+export type GpuInfo = {
+    name: string;
+    is_mock: boolean;
+};
+
 export type ProcessInfo = {
     name: string;
     title: string;

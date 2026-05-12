@@ -1,4 +1,4 @@
-use crate::nvidia::{DisplaySettings, GpuController, NvError, NvResult, NV_DISPLAY_DVC_INFO};
+use crate::nvidia::{DisplaySettings, GpuController, NvError, NvResult, NV_DISPLAY_DVC_INFO, GpuInfo};
 use std::sync::Mutex;
 
 #[derive(Debug, Clone)]
@@ -49,6 +49,13 @@ impl MockGpuController {
 }
 
 impl GpuController for MockGpuController {
+    fn get_info(&self) -> GpuInfo {
+        GpuInfo {
+            name: "Mock GPU".to_string(),
+            is_mock: true,
+        }
+    }
+
     fn get_displays(&self) -> NvResult<Vec<crate::nvidia::DisplayInfo>> {
         Ok(vec![crate::nvidia::DisplayInfo {
             id: "\\\\.\\DISPLAY1".to_string(),

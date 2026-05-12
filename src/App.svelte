@@ -5,7 +5,7 @@
   import { invoke } from "@tauri-apps/api/tauri";
   import { listen } from "@tauri-apps/api/event";
   import { appWindow } from "@tauri-apps/api/window";
-  import type { DisplayProfile, AppConfig, DisplaySettings, DisplayInfo } from "./lib/types";
+  import type { DisplayProfile, AppConfig, DisplaySettings, DisplayInfo, GpuInfo } from "./lib/types";
   import ProfileList from "./lib/ProfileList.svelte";
   import ProfileEditor from "./lib/ProfileEditor.svelte";
   import SettingsTab from "./lib/SettingsTab.svelte";
@@ -15,6 +15,7 @@
   let activeIndex = $state<number | null>(null);
   let config = $state<AppConfig | null>(null);
   let displays = $state<DisplayInfo[]>([]);
+  let gpuInfo = $state<GpuInfo | null>(null);
   
   let activeTab = $state<'profiles' | 'settings'>('profiles');
   let editingIndex = $state<number | null>(null);
@@ -39,16 +40,18 @@
   async function loadState() {
     status = i18n.t("app.status.loading");
     try {
-        const [res, cfg, ds] = await Promise.all([
+        const [res, cfg, ds, gi] = await Promise.all([
             invoke<{ profiles: DisplayProfile[]; active_index: number }>("get_profiles_state"),
             invoke<AppConfig>("get_config"),
-            invoke<DisplayInfo[]>("get_displays")
+            invoke<DisplayInfo[]>("get_displays"),
+            invoke<GpuInfo>("get_gpu_info")
         ]);
         
         profiles = res.profiles;
         activeIndex = res.active_index;
         config = cfg;
         displays = ds;
+        gpuInfo = gi;
         
         if (config && config.language) {
             i18n.setLanguage(config.language);
@@ -145,6 +148,18 @@
           status = `${i18n.t("app.status.error")}: ${e}`;
       }
   }
+
+  async function handleReset() {
+      if (!confirm(i18n.t("settings.confirm_reset"))) return;
+      status = i18n.t("app.status.resetting");
+      try {
+          await invoke("reset_to_defaults");
+          await loadState();
+          status = i18n.t("app.status.ready");
+      } catch (e) {
+          status = `${i18n.t("app.status.error")}: ${e}`;
+      }
+  }
   
   async function cancelEdit() {
       editingIndex = null;
@@ -165,6 +180,9 @@
     <div class="brand" data-tauri-drag-region>
       <img src="/icon.svg" alt="" class="logo" />
       <h1 data-tauri-drag-region>color-schemer</h1>
+      {#if gpuInfo?.is_mock}
+        <span class="mock-badge">{i18n.t('settings.status_mock')}</span>
+      {/if}
     </div>
     <div class="header-right">
       <div class="status">{status}</div>
@@ -220,7 +238,7 @@
               />
           {/if}
       {:else if activeTab === 'settings' && config}
-          <SettingsTab {config} onSave={saveSettings} />
+          <SettingsTab {config} {gpuInfo} onSave={saveSettings} onReset={handleReset} />
       {/if}
   </div>
 </main>
@@ -283,6 +301,18 @@
     text-transform: uppercase;
     letter-spacing: 1px;
     font-family: var(--font-mono);
+  }
+  .mock-badge {
+    background: var(--error-dim);
+    color: var(--text-main);
+    font-size: 10px;
+    font-family: var(--font-mono);
+    padding: 2px 8px;
+    border-radius: 4px;
+    border: 1px solid var(--error);
+    box-shadow: 0 0 5px var(--error-glow);
+    text-transform: uppercase;
+    margin-left: 8px;
   }
   .status {
     font-size: 11px;

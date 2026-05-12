@@ -6,7 +6,7 @@ use log::info;
 
 use crate::config::HotkeyConfig;
 
-/// Идентификаторы действий
+/// Action identifiers
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HotkeyAction {
     NextProfile,
@@ -14,7 +14,7 @@ pub enum HotkeyAction {
     Reset,
 }
 
-/// Менеджер горячих клавиш
+/// Hotkey manager
 pub struct HotkeyController {
     _manager: GlobalHotKeyManager,
     next_id: u32,
@@ -25,7 +25,7 @@ pub struct HotkeyController {
 impl HotkeyController {
     pub fn new(config: &HotkeyConfig) -> Result<Self, String> {
         let manager = GlobalHotKeyManager::new()
-            .map_err(|e| format!("Не удалось создать менеджер горячих клавиш: {}", e))?;
+            .map_err(|e| format!("Failed to create hotkey manager: {}", e))?;
 
         let mut registered_ids = std::collections::HashSet::new();
 
@@ -36,11 +36,11 @@ impl HotkeyController {
             let hk = parse_hotkey(input).map_err(|e| format!("{}: {}", label, e))?;
             let id = hk.id();
             if registered_ids.contains(&id) {
-                info!("Горячая клавиша '{}' уже зарегистрирована, пропускаем дубликат для '{}'", input, label);
+                info!("Hotkey '{}' is already registered, skipping duplicate for '{}'", input, label);
                 return Ok(Some(id));
             }
             manager.register(hk).map_err(|e| {
-                format!("Не удалось зарегистрировать '{}' для '{}': {}", input, label, e)
+                format!("Failed to register '{}' for '{}': {}", input, label, e)
             })?;
             registered_ids.insert(id);
             Ok(Some(id))
@@ -50,15 +50,15 @@ impl HotkeyController {
         let prev_id = register("prev_profile", &config.prev_profile)?.unwrap_or(0);
         let reset_id = register("reset", &config.reset)?.unwrap_or(0);
 
-        info!("Горячие клавиши зарегистрированы:");
+        info!("Hotkeys registered:");
         if !config.next_profile.is_empty() {
-            info!("  {} — следующий профиль", config.next_profile);
+            info!("  {} - next profile", config.next_profile);
         }
         if !config.prev_profile.is_empty() {
-            info!("  {} — предыдущий профиль", config.prev_profile);
+            info!("  {} - previous profile", config.prev_profile);
         }
         if !config.reset.is_empty() {
-            info!("  {} — сброс к стандартным", config.reset);
+            info!("  {} - reset to default", config.reset);
         }
 
         Ok(Self {
@@ -69,7 +69,7 @@ impl HotkeyController {
         })
     }
 
-    /// Определить действие по ID горячей клавиши
+    /// Determine action by hotkey ID
     pub fn get_action(&self, id: u32) -> Option<HotkeyAction> {
         if id == self.next_id {
             Some(HotkeyAction::NextProfile)
@@ -82,7 +82,7 @@ impl HotkeyController {
         }
     }
 
-    /// Получить receiver для событий горячих клавиш
+    /// Get receiver for hotkey events
     pub fn receiver() -> &'static crossbeam_channel::Receiver<GlobalHotKeyEvent> {
         GlobalHotKeyEvent::receiver()
     }

@@ -29,9 +29,9 @@ fn test_default_config() {
 fn test_localized_defaults() {
     let config = AppConfig::default();
     if config.language == "ru" {
-        assert_eq!(config.profiles[0].name, "Стандарт");
-        assert_eq!(config.profiles[1].name, "Игровой");
-        assert_eq!(config.profiles[2].name, "Ночной");
+        assert_eq!(config.profiles[0].name, "Standard");
+        assert_eq!(config.profiles[1].name, "Gaming");
+        assert_eq!(config.profiles[2].name, "Night");
     } else {
         assert_eq!(config.profiles[0].name, "Default");
         assert_eq!(config.profiles[1].name, "Gaming");
@@ -44,7 +44,7 @@ fn test_default_has_standard_profile() {
     let config = AppConfig::default();
     // Profile name depends on language now
     if config.language == "ru" {
-        assert_eq!(config.profiles[0].name, "Стандарт");
+        assert_eq!(config.profiles[0].name, "Standard");
     } else {
         assert_eq!(config.profiles[0].name, "Default");
     }
@@ -259,13 +259,13 @@ digital_vibrance = 63
 fn test_config_load_sanitizes_profiles() {
     let mut config = AppConfig::default();
     config.profiles[0].name = "A".repeat(40);
-    
+
     // Create a temp file to simulate loading
     let temp_path = std::env::temp_dir().join("test_config_sanitize.toml");
     config.save_to(&temp_path).unwrap();
-    
+
     let loaded_config = AppConfig::load_from(&temp_path);
     assert_eq!(loaded_config.profiles[0].name.chars().count(), 32);
-    
+
     let _ = std::fs::remove_file(temp_path);
 }

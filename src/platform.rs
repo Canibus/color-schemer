@@ -576,14 +576,20 @@ pub mod windows {
 
     pub fn pump_messages() {}
 
+    pub fn wait_message() {}
+
+    pub fn wake_message_loop() {}
+
     pub fn set_device_gamma_ramp(_ramp: &[[u16; 256]; 3], _device_name: Option<&str>) -> Result<(), String> {
         Err("Gamma ramp is only supported on Windows".to_string())
     }
 
-    pub fn show_notification(_title: &str, _message: &str) {}
-
     pub fn update_auto_start(_enabled: bool) -> Result<(), String> {
         Ok(())
+    }
+
+    pub fn enumerate_monitors() -> Vec<MonitorData> {
+        Vec::new()
     }
 
     pub struct SingleInstance;

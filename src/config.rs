@@ -43,15 +43,11 @@ impl Default for AppConfig {
 
         let profiles = if language == "ru" {
             vec![
-                DisplayProfile::new(
-                    "Стандарт",
-                    "Стандартные настройки",
-                    DisplaySettings::default(),
-                ),
+                DisplayProfile::new("Standard", "Standard settings", DisplaySettings::default()),
                 {
-                    let mut p = DisplayProfile::new(
-                        "Игровой",
-                        "Игровой профиль",
+                    let p = DisplayProfile::new(
+                        "Gaming",
+                        "Gaming profile",
                         DisplaySettings {
                             brightness: 1.1,
                             contrast: 1.15,
@@ -59,12 +55,11 @@ impl Default for AppConfig {
                             digital_vibrance: 63,
                         },
                     );
-                    p.applications = vec!["Notepad.exe".to_string()];
                     p
                 },
                 DisplayProfile::new(
-                    "Ночной",
-                    "Ночной режим",
+                    "Night",
+                    "Night mode",
                     DisplaySettings {
                         brightness: 0.7,
                         contrast: 0.9,
@@ -75,13 +70,9 @@ impl Default for AppConfig {
             ]
         } else {
             vec![
-                DisplayProfile::new(
-                    "Default",
-                    "Standard settings",
-                    DisplaySettings::default(),
-                ),
+                DisplayProfile::new("Default", "Standard settings", DisplaySettings::default()),
                 {
-                    let mut p = DisplayProfile::new(
+                    let p = DisplayProfile::new(
                         "Gaming",
                         "Gaming profile",
                         DisplaySettings {
@@ -91,7 +82,6 @@ impl Default for AppConfig {
                             digital_vibrance: 63,
                         },
                     );
-                    p.applications = vec!["Notepad.exe".to_string()];
                     p
                 },
                 DisplayProfile::new(
@@ -119,7 +109,7 @@ impl Default for AppConfig {
 
 impl AppConfig {
     fn config_path() -> PathBuf {
-        // 1. Пытаемся найти конфиг рядом с .exe (портативный режим)
+        // 1. Try to find config next to .exe (portable mode)
         if let Ok(exe_path) = std::env::current_exe() {
             if let Some(exe_dir) = exe_path.parent() {
                 let portable_config = exe_dir.join("config.toml");
@@ -129,18 +119,18 @@ impl AppConfig {
             }
         }
 
-        // 2. Иначе используем стандартную папку AppData для установленного приложения
-        // В Windows это обычно C:\Users\<Name>\AppData\Local\color-schemer
+        // 2. Otherwise use standard AppData folder for installed application
+        // On Windows this is usually C:\Users\<Name>\AppData\Local\color-schemer
         let mut path = if let Ok(local_app_data) = std::env::var("LOCALAPPDATA") {
             PathBuf::from(local_app_data)
         } else {
-            // Фолбэк на текущую директорию если переменная окружения не найдена
+            // Fallback to current directory if environment variable not found
             PathBuf::from(".")
         };
 
         path.push("color-schemer");
-        
-        // Создаем директорию если её нет
+
+        // Create directory if it doesn't exist
         if !path.exists() {
             let _ = fs::create_dir_all(&path);
         }
@@ -149,12 +139,12 @@ impl AppConfig {
         path
     }
 
-    /// Загрузить из произвольного пути (для тестирования)
+    /// Load from arbitrary path (for testing)
     pub fn load_from(path: &std::path::Path) -> Self {
         match fs::read_to_string(path) {
             Ok(content) => match toml::from_str::<Self>(&content) {
                 Ok(mut config) => {
-                    info!("Конфигурация загружена из {:?}", path);
+                    info!("Configuration loaded from {:?}", path);
                     // Sanitize all profiles after loading
                     for profile in &mut config.profiles {
                         profile.sanitize();
@@ -162,24 +152,18 @@ impl AppConfig {
                     config
                 }
                 Err(e) => {
-                    warn!(
-                        "Ошибка парсинга: {}. Используются значения по умолчанию.",
-                        e
-                    );
+                    warn!("Parse error: {}. Using default values.", e);
                     Self::default()
                 }
             },
             Err(_) => {
-                info!(
-                    "Файл {:?} не найден. Используются значения по умолчанию.",
-                    path
-                );
+                info!("File {:?} not found. Using default values.", path);
                 Self::default()
             }
         }
     }
 
-    /// Сохранить в произвольный путь (для тестирования)
+    /// Save to arbitrary path (for testing)
     pub fn save_to(&self, path: &std::path::Path) -> Result<(), String> {
         let content =
             toml::to_string_pretty(self).map_err(|e| format!("Serialization error: {}", e))?;
@@ -193,7 +177,7 @@ impl AppConfig {
 
     pub fn save(&self) {
         if let Err(e) = self.save_to(&Self::config_path()) {
-            warn!("Не удалось сохранить конфигурацию: {}", e);
+            warn!("Failed to save configuration: {}", e);
         }
     }
 }

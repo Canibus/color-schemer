@@ -1,16 +1,20 @@
 <!-- src/lib/SettingsTab.svelte -->
 <script lang="ts">
   import { invoke } from "@tauri-apps/api/tauri";
-  import type { AppConfig, HotkeyConfig } from "./types";
+  import type { AppConfig, HotkeyConfig, GpuInfo } from "./types";
   import { i18n } from "./i18n.svelte";
   import { untrack } from "svelte";
   
   let { 
-    config, 
-    onSave 
+    config,
+    gpuInfo,
+    onSave,
+    onReset
   } = $props<{
     config: AppConfig;
+    gpuInfo: GpuInfo | null;
     onSave: (updated: AppConfig) => void;
+    onReset: () => void;
   }>();
 
   let edited = $state(untrack(() => $state.snapshot(config)));
@@ -174,6 +178,32 @@
           </label>
       </div>
   </div>
+
+  <div class="field-group">
+    <div class="group-label">{i18n.t('settings.hardware')}</div>
+    <div class="group-content hardware-info">
+        <div class="info-row">
+            <span>{i18n.t('settings.gpu')}:</span>
+            <span class="value">{gpuInfo?.name || "..."}</span>
+        </div>
+        <div class="info-row">
+            <span>{i18n.t('settings.nvapi_status')}:</span>
+            <span class="value" class:mock={gpuInfo?.is_mock}>
+                {gpuInfo?.is_mock ? i18n.t('settings.status_mock') : i18n.t('settings.status_ok')}
+            </span>
+        </div>
+    </div>
+  </div>
+
+  <div class="field-group">
+    <div class="group-label">{i18n.t('settings.maintenance')}</div>
+    <div class="group-content">
+        <button class="reset-btn" onclick={onReset}>
+            {i18n.t('settings.reset_defaults')}
+        </button>
+    </div>
+  </div>
+
   <div class="actions">
       <button class="save-btn" onclick={() => onSave(edited)}>{i18n.t('settings.save')}</button>
   </div>
@@ -352,6 +382,45 @@
     background: var(--primary);
     transform: translateX(12px);
     box-shadow: 0 0 5px var(--primary-glow);
+  }
+
+  .hardware-info {
+      gap: 10px;
+  }
+
+  .info-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      font-family: var(--font-mono);
+  }
+
+  .info-row .value {
+      color: var(--primary);
+  }
+
+  .info-row .value.mock {
+      color: var(--error);
+  }
+
+  .reset-btn {
+      appearance: none;
+      background: var(--error-dim);
+      border: 1px solid var(--error);
+      color: var(--text-main);
+      padding: 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      text-align: center;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      transition: all 0.2s;
+      text-transform: uppercase;
+  }
+
+  .reset-btn:hover {
+      background: var(--error);
+      box-shadow: 0 0 10px var(--error-glow);
   }
 
   .actions { 

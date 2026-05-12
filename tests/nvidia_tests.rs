@@ -3,7 +3,7 @@ use color_schemer::nvidia::GpuController;
 use color_schemer::nvidia::{DisplaySettings, compute_gamma_ramp};
 
 // ============================================================
-// DisplaySettings — defaults
+// DisplaySettings - defaults
 // ============================================================
 
 #[test]
@@ -27,7 +27,7 @@ fn test_display_settings_is_default() {
 }
 
 // ============================================================
-// DisplaySettings — validation
+// DisplaySettings - validation
 // ============================================================
 
 #[test]
@@ -75,7 +75,7 @@ fn test_validation_preserves_valid_values() {
 }
 
 // ============================================================
-// DisplaySettings — serialization
+// DisplaySettings - serialization
 // ============================================================
 
 #[test]
@@ -93,7 +93,7 @@ fn test_display_settings_json_roundtrip() {
 }
 
 // ============================================================
-// Gamma Ramp — базовые проверки
+// Gamma Ramp - basic checks
 // ============================================================
 
 #[test]
@@ -107,7 +107,7 @@ fn test_gamma_ramp_default_is_linear() {
     assert_eq!(ramp[1][255], 65535);
     assert_eq!(ramp[2][255], 65535);
 
-    // Середина ≈ 32767
+    // Midpoint ≈ 32767
     let mid = ramp[0][128];
     assert!(
         mid >= 32500 && mid <= 33100,
@@ -157,7 +157,7 @@ fn test_gamma_ramp_channels_equal() {
 }
 
 // ============================================================
-// Gamma Ramp — влияние параметров
+// Gamma Ramp - parameter effects
 // ============================================================
 
 #[test]
@@ -168,7 +168,7 @@ fn test_gamma_ramp_high_brightness() {
     });
 
     assert_eq!(ramp[0][255], 65535);
-    // Середина выше чем при стандарте
+    // Midpoint higher than standard
     assert!(
         ramp[0][128] > 33000,
         "High brightness mid {} too low",
@@ -228,11 +228,8 @@ fn test_gamma_ramp_values_always_clamped() {
     };
     let ramp = compute_gamma_ramp(&extreme);
 
-    for channel in 0..3 {
-        for i in 0..256 {
-            assert!(ramp[channel][i] <= 65535);
-        }
-    }
+    // Verify the ramp is generated (the function doesn't panic)
+    assert_eq!(ramp[0].len(), 256);
 }
 
 // ============================================================

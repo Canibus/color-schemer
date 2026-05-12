@@ -7,7 +7,7 @@ use std::mem;
 use crate::platform;
 
 // ============================================================================
-// NVAPI типы и константы
+// NVAPI types and constants
 // ============================================================================
 
 #[allow(non_camel_case_types)]
@@ -165,7 +165,7 @@ impl Default for DisplaySettings {
 }
 
 impl DisplaySettings {
-    /// Валидация настроек — возвращает исправленную копию
+    /// Settings validation - returns a corrected copy
     pub fn validated(&self) -> Self {
         Self {
             brightness: self.brightness.clamp(0.0, 2.0),
@@ -175,7 +175,7 @@ impl DisplaySettings {
         }
     }
 
-    /// Проверить, являются ли настройки дефолтными
+    /// Check if settings are default
     pub fn is_default(&self) -> bool {
         (self.brightness - 1.0).abs() < f64::EPSILON
             && (self.contrast - 1.0).abs() < f64::EPSILON
@@ -191,8 +191,14 @@ pub struct DisplayInfo {
     pub is_primary: bool,
 }
 
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct GpuInfo {
+    pub name: String,
+    pub is_mock: bool,
+}
+
 // ============================================================================
-// Трейт для абстракции GPU-контроллера (для тестирования)
+// Trait for GPU controller abstraction (for testing)
 // ============================================================================
 
 pub trait GpuController: Send + Sync {
@@ -201,14 +207,15 @@ pub trait GpuController: Send + Sync {
     fn set_digital_vibrance(&self, display_handle: usize, level: i32) -> NvResult<()>;
     fn get_digital_vibrance(&self, display_handle: usize) -> NvResult<NV_DISPLAY_DVC_INFO>;
     fn reset(&self, display_id: Option<&str>) -> NvResult<()>;
+    fn get_info(&self) -> GpuInfo;
 }
 
 // ============================================================================
-// Вычисление gamma ramp (публичное для тестирования)
+// Gamma ramp computation (public for testing)
 // ============================================================================
 
-/// Вычислить gamma ramp таблицу из настроек
-/// Возвращает [[u16; 256]; 3] — Red, Green, Blue каналы
+/// Compute gamma ramp table from settings
+/// Returns [[u16; 256]; 3] - Red, Green, Blue channels
 pub fn compute_gamma_ramp(settings: &DisplaySettings) -> [[u16; 256]; 3] {
     let mut ramp = [[0u16; 256]; 3];
 
@@ -229,7 +236,7 @@ pub fn compute_gamma_ramp(settings: &DisplaySettings) -> [[u16; 256]; 3] {
 }
 
 // ============================================================================
-// NvidiaController — реальная реализация
+// NvidiaController - real implementation
 // ============================================================================
 
 pub struct NvidiaController {
@@ -245,8 +252,8 @@ pub struct NvidiaController {
     fn_enum_display: NvAPI_EnumNvidiaDisplayHandle_t,
 }
 
-// Безопасность: NvidiaController хранит указатели на функции из DLL,
-// которые потокобезопасны по контракту NVAPI
+// Safety: NvidiaController stores function pointers from DLL,
+// which are thread-safe by NVAPI contract
 unsafe impl Send for NvidiaController {}
 unsafe impl Sync for NvidiaController {}
 
@@ -256,7 +263,8 @@ impl NvidiaController {
             return Err(NvError::NotSupported);
         }
 
-        info!("Загрузка NVAPI...");
+        info!("Loading NVAPI...");
+
 
         let lib_name = if cfg!(target_arch = "x86_64") {
             "nvapi64.dll"
@@ -266,7 +274,7 @@ impl NvidiaController {
 
         let library = unsafe {
             Library::new(lib_name)
-                .map_err(|e| NvError::Library(format!("Не удалось загрузить {}: {}", lib_name, e)))?
+                .map_err(|e| NvError::Library(format!("Failed to load {}: {}", lib_name, e)))?
         };
 
         let query_interface: NvAPI_QueryInterface_t = unsafe {
@@ -294,7 +302,7 @@ impl NvidiaController {
             fn_enum_display: Self::get_func_ptr(query_interface, NVAPI_ENUM_NVIDIA_DISPLAY_HANDLE)?,
         };
 
-        info!("NVAPI инициализирован.");
+        info!("NVAPI initialized.");
         Ok(controller)
     }
 
@@ -338,6 +346,13 @@ impl NvidiaController {
 }
 
 impl GpuController for NvidiaController {
+    fn get_info(&self) -> GpuInfo {
+        GpuInfo {
+            name: "NVIDIA".to_string(),
+            is_mock: false,
+        }
+    }
+
     fn get_displays(&self) -> NvResult<Vec<DisplayInfo>> {
         let monitors = platform::windows::enumerate_monitors();
         let mut displays = Vec::new();
@@ -379,7 +394,7 @@ impl GpuController for NvidiaController {
             Self::set_gamma_ramp(&validated, None)?;
         }
         
-        info!("Настройки применены для {:?}: {:?}", display_id, validated);
+        info!("Settings applied for {:?}: {:?}", display_id, validated);
         Ok(())
     }
 
@@ -425,7 +440,7 @@ impl Drop for NvidiaController {
             unsafe {
                 (self.fn_unload)();
             }
-            info!("NVAPI выгружен");
+            info!("NVAPI unloaded");
         }
     }
 }
