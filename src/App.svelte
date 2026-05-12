@@ -210,6 +210,7 @@
                       profile={{ name: i18n.t('editor.new_profile'), description: "", settings: { brightness: 1, contrast: 1, gamma: 1, digital_vibrance: 0 }, target_displays: [], applications: [] }} 
                       {displays}
                       onSave={(p) => {
+                          if (!config) return;
                           const newConfig = { 
                               ...config, 
                               profiles: [...config.profiles, p] 
