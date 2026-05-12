@@ -201,8 +201,8 @@ fn save_config(state: tauri::State<'_, AppState>, app_handle: tauri::AppHandle, 
     // Update tray menu if language changed
     if lang_changed {
         let tray_handle = app_handle.tray_handle();
-        let _ = tray_handle.get_item("quit").set_title(color_schemer::i18n::t(&updated.language, "tray.quit"));
-        let _ = tray_handle.get_item("show").set_title(color_schemer::i18n::t(&updated.language, "tray.show"));
+        let _ = tray_handle.get_item("quit").set_title(color_schemer::i18n::t(updated.language.as_str(), "tray.quit"));
+        let _ = tray_handle.get_item("show").set_title(color_schemer::i18n::t(updated.language.as_str(), "tray.show"));
     }
 
     // Signal background thread to update hotkeys.
@@ -263,7 +263,7 @@ fn get_gpu_info(state: tauri::State<'_, AppState>) -> color_schemer::nvidia::Gpu
 
 #[tauri::command]
 fn reset_to_defaults(state: tauri::State<'_, AppState>) -> Result<AppConfig, String> {
-    let mut default_cfg = AppConfig::default();
+    let default_cfg = AppConfig::default();
     
     // We might want to preserve the language if the user already changed it?
     // Actually, "Factory Reset" usually means everything back to defaults.
@@ -349,8 +349,8 @@ fn main() {
     }
 
     // System Tray Setup
-    let quit = CustomMenuItem::new("quit".to_string(), color_schemer::i18n::t(&config.language, "tray.quit"));
-    let show = CustomMenuItem::new("show".to_string(), color_schemer::i18n::t(&config.language, "tray.show"));
+    let quit = CustomMenuItem::new("quit".to_string(), color_schemer::i18n::t(config.language.as_str(), "tray.quit"));
+    let show = CustomMenuItem::new("show".to_string(), color_schemer::i18n::t(config.language.as_str(), "tray.show"));
     let tray_menu = SystemTrayMenu::new()
         .add_item(show)
         .add_native_item(SystemTrayMenuItem::Separator)

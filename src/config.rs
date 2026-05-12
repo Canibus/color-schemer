@@ -22,10 +22,37 @@ impl Default for HotkeyConfig {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum Language {
+    En,
+    Ru,
+}
+
+impl Language {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Language::En => "en",
+            Language::Ru => "ru",
+        }
+    }
+}
+
+impl Default for Language {
+    fn default() -> Self {
+        let locale = sys_locale::get_locale().unwrap_or_else(|| "en".to_string());
+        if locale.to_lowercase().starts_with("ru") {
+            Language::Ru
+        } else {
+            Language::En
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct AppConfig {
-    pub language: String,
+    pub language: Language,
     pub hotkeys: HotkeyConfig,
     pub start_minimized: bool,
     pub auto_start: bool,
@@ -34,68 +61,36 @@ pub struct AppConfig {
 
 impl Default for AppConfig {
     fn default() -> Self {
-        let locale = sys_locale::get_locale().unwrap_or_else(|| "en".to_string());
-        let language = if locale.to_lowercase().starts_with("ru") {
-            "ru".to_string()
+        let language = Language::default();
+        let first_profile_name = if language == Language::Ru {
+            "Standard"
         } else {
-            "en".to_string()
+            "Default"
         };
 
-        let profiles = if language == "ru" {
-            vec![
-                DisplayProfile::new("Standard", "Standard settings", DisplaySettings::default()),
-                {
-                    let p = DisplayProfile::new(
-                        "Gaming",
-                        "Gaming profile",
-                        DisplaySettings {
-                            brightness: 1.1,
-                            contrast: 1.15,
-                            gamma: 0.95,
-                            digital_vibrance: 63,
-                        },
-                    );
-                    p
+        let profiles = vec![
+            DisplayProfile::new(first_profile_name, "Standard settings", DisplaySettings::default()),
+            DisplayProfile::new(
+                "Gaming",
+                "Gaming profile",
+                DisplaySettings {
+                    brightness: 1.1,
+                    contrast: 1.15,
+                    gamma: 0.95,
+                    digital_vibrance: 63,
                 },
-                DisplayProfile::new(
-                    "Night",
-                    "Night mode",
-                    DisplaySettings {
-                        brightness: 0.7,
-                        contrast: 0.9,
-                        gamma: 1.2,
-                        digital_vibrance: 0,
-                    },
-                ),
-            ]
-        } else {
-            vec![
-                DisplayProfile::new("Default", "Standard settings", DisplaySettings::default()),
-                {
-                    let p = DisplayProfile::new(
-                        "Gaming",
-                        "Gaming profile",
-                        DisplaySettings {
-                            brightness: 1.1,
-                            contrast: 1.15,
-                            gamma: 0.95,
-                            digital_vibrance: 63,
-                        },
-                    );
-                    p
+            ),
+            DisplayProfile::new(
+                "Night",
+                "Night mode",
+                DisplaySettings {
+                    brightness: 0.7,
+                    contrast: 0.9,
+                    gamma: 1.2,
+                    digital_vibrance: 0,
                 },
-                DisplayProfile::new(
-                    "Night",
-                    "Night mode",
-                    DisplaySettings {
-                        brightness: 0.7,
-                        contrast: 0.9,
-                        gamma: 1.2,
-                        digital_vibrance: 0,
-                    },
-                ),
-            ]
-        };
+            ),
+        ];
 
         Self {
             language,
@@ -120,23 +115,12 @@ impl AppConfig {
         }
 
         // 2. Otherwise use standard AppData folder for installed application
-        // On Windows this is usually C:\Users\<Name>\AppData\Local\color-schemer
-        let mut path = if let Ok(local_app_data) = std::env::var("LOCALAPPDATA") {
-            PathBuf::from(local_app_data)
+        if let Some(proj_dirs) = directories::ProjectDirs::from("com", "ColorSchemer", "ColorSchemer") {
+            proj_dirs.config_dir().join("config.toml")
         } else {
-            // Fallback to current directory if environment variable not found
-            PathBuf::from(".")
-        };
-
-        path.push("color-schemer");
-
-        // Create directory if it doesn't exist
-        if !path.exists() {
-            let _ = fs::create_dir_all(&path);
+            // Fallback to current directory
+            PathBuf::from("config.toml")
         }
-
-        path.push("config.toml");
-        path
     }
 
     /// Load from arbitrary path (for testing)
@@ -152,7 +136,8 @@ impl AppConfig {
                     config
                 }
                 Err(e) => {
-                    warn!("Parse error: {}. Using default values.", e);
+                    warn!("Parse error: {}. Backing up corrupted config and using defaults.", e);
+                    let _ = fs::rename(path, path.with_extension("toml.bak"));
                     Self::default()
                 }
             },
@@ -164,10 +149,12 @@ impl AppConfig {
     }
 
     /// Save to arbitrary path (for testing)
-    pub fn save_to(&self, path: &std::path::Path) -> Result<(), String> {
-        let content =
-            toml::to_string_pretty(self).map_err(|e| format!("Serialization error: {}", e))?;
-        fs::write(path, content).map_err(|e| format!("Write error: {}", e))?;
+    pub fn save_to(&self, path: &std::path::Path) -> anyhow::Result<()> {
+        let content = toml::to_string_pretty(self)?;
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        fs::write(path, content)?;
         Ok(())
     }
 

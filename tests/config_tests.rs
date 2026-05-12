@@ -1,4 +1,4 @@
-use color_schemer::config::AppConfig;
+use color_schemer::config::{AppConfig, Language};
 use color_schemer::nvidia::DisplaySettings;
 use color_schemer::profiles::DisplayProfile;
 use std::io::Write;
@@ -21,14 +21,13 @@ fn test_default_config() {
     assert!(config.auto_start);
     assert_eq!(config.profiles.len(), 3);
     assert_eq!(config.hotkeys.next_profile, "Ctrl+Shift+F5");
-    // This will fail to compile until 'language' field is added
-    assert!(config.language == "en" || config.language == "ru");
+    assert!(config.language == Language::En || config.language == Language::Ru);
 }
 
 #[test]
 fn test_localized_defaults() {
     let config = AppConfig::default();
-    if config.language == "ru" {
+    if config.language == Language::Ru {
         assert_eq!(config.profiles[0].name, "Standard");
         assert_eq!(config.profiles[1].name, "Gaming");
         assert_eq!(config.profiles[2].name, "Night");
@@ -43,7 +42,7 @@ fn test_localized_defaults() {
 fn test_default_has_standard_profile() {
     let config = AppConfig::default();
     // Profile name depends on language now
-    if config.language == "ru" {
+    if config.language == Language::Ru {
         assert_eq!(config.profiles[0].name, "Standard");
     } else {
         assert_eq!(config.profiles[0].name, "Default");
@@ -104,7 +103,7 @@ digital_vibrance = 42
     let file = temp_config(content);
     let config = AppConfig::load_from(file.path());
 
-    assert_eq!(config.language, "en");
+    assert_eq!(config.language, Language::En);
     assert!(config.start_minimized);
     assert!(!config.auto_start);
     assert_eq!(config.profiles.len(), 1);
@@ -222,7 +221,7 @@ digital_vibrance = 200
     let file = temp_config(content);
     let config = AppConfig::load_from(file.path());
 
-    assert_eq!(config.language, "en");
+    assert_eq!(config.language, Language::En);
     assert_eq!(config.profiles.len(), 3);
     assert_eq!(config.profiles[0].name, "A");
     assert_eq!(config.profiles[1].name, "B");
