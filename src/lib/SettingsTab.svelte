@@ -27,7 +27,6 @@
 
   function handleLanguageChange() {
       i18n.setLanguage(edited.language);
-      invoke("save_config", { updated: edited });
       onSave(edited);
   }
 
