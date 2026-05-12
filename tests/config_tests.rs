@@ -259,14 +259,11 @@ fn test_config_load_sanitizes_profiles() {
     let mut config = AppConfig::default();
     config.profiles[0].name = "A".repeat(40);
 
-    // Create a temp file to simulate loading
-    let temp_path = std::env::temp_dir().join("test_config_sanitize.toml");
-    config.save_to(&temp_path).unwrap();
+    let file = temp_config("");
+    config.save_to(file.path()).unwrap();
 
-    let loaded_config = AppConfig::load_from(&temp_path);
+    let loaded_config = AppConfig::load_from(file.path());
     assert_eq!(loaded_config.profiles[0].name.chars().count(), 32);
-
-    let _ = std::fs::remove_file(temp_path);
 }
 
 #[test]
