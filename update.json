@@ -1,0 +1,11 @@
+{
+  "version": "0.1.0",
+  "notes": "Release v0.1.0",
+  "pub_date": "2026-05-13T06:37:16.480Z",
+  "platforms": {
+    "windows-x86_64": {
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVSN0I5RGwyZEtGUDhqMTh6WElBRnhmeWNlQy9yV2JmY2ZBOUNRN1M5S2hmQXV1MGtjek50cndFRHdLc1NPS2Z3cGdtMk5YeHZMZ2Y2NW95T3BkMWJzTml2U09SeGJ0cWdZPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzc4NjU0MjMxCWZpbGU6Y29sb3Itc2NoZW1lcl8wLjEuMF94NjRfZW4tVVMubXNpLnppcAo4cUVJTG9ZTHNLYVYrZG1WTkxpZ1NlTnBoYnhNTjNnTWlTQ1FGTVhZQ2RFVkxGUGViY1l4ZTVSNXZtMGlJWTBYM3dHaDZUL1NZY3ZvcDg0RjZVWWlDdz09Cg==",
+      "url": "https://github.com/canibus/color-schemer/releases/download/v0.1.0/color-schemer_0.1.0_x64_en-US.msi.zip"
+    }
+  }
+}
