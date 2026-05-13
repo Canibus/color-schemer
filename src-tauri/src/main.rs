@@ -388,7 +388,9 @@ fn main() {
                     info!("Quitting from tray menu");
                     let _ = nvidia_for_quit.reset(None);
                     if hook_raw != 0 {
-                        platform::windows::unhook_event_hook(hook_raw as *mut std::ffi::c_void);
+                        unsafe {
+                            platform::windows::unhook_event_hook(hook_raw as *mut std::ffi::c_void);
+                        }
                     }
                     std::process::exit(0);
                 }
@@ -419,34 +421,47 @@ fn main() {
                 
                 std::thread::spawn(move || {
                     loop {
-                        if FOREGROUND_CHANGED.swap(false, Ordering::SeqCst) {
-                            if let Some(process_name) = platform::windows::get_foreground_process_name() {
-                                let mut asm = asm_c.lock().unwrap();
-                                let pm = pm_c.lock().unwrap();
-                                let profiles = pm.profiles().to_vec();
-                                drop(pm);
+                        if let Some(process_name) = FOREGROUND_CHANGED
+                            .swap(false, Ordering::SeqCst)
+                            .then(platform::windows::get_foreground_process_name)
+                            .flatten()
+                        {
+                            let mut asm = asm_c.lock().unwrap();
+                            let pm = pm_c.lock().unwrap();
+                            let profiles = pm.profiles().to_vec();
+                            drop(pm);
 
-                                if let Some(target_index) = asm.evaluate_focus_change(&process_name, &profiles) {
-                                    drop(asm);
-                                    
-                                    let pm = pm_c.lock().unwrap();
-                                    if let Some(profile) = pm.profiles().get(target_index) {
-                                        let settings = profile.settings.clone();
-                                        let target_displays = profile.target_displays.clone();
-                                        drop(pm);
-                                        
-                                        if target_displays.is_empty() {
-                                            let _ = nvidia_c.apply_display_settings(None, &settings);
-                                        } else {
-                                            for id in &target_displays {
-                                                let _ = nvidia_c.apply_display_settings(Some(id), &settings);
-                                            }
+                            if let Some(target_index) =
+                                asm.evaluate_focus_change(&process_name, &profiles)
+                            {
+                                drop(asm);
+
+                                let pm = pm_c.lock().unwrap();
+                                if let Some(profile) = pm.profiles().get(target_index) {
+                                    let settings = profile.settings.clone();
+                                    let target_displays = profile.target_displays.clone();
+                                    drop(pm);
+
+                                    if target_displays.is_empty() {
+                                        let _ = nvidia_c.apply_display_settings(None, &settings);
+                                    } else {
+                                        for id in &target_displays {
+                                            let _ =
+                                                nvidia_c.apply_display_settings(Some(id), &settings);
                                         }
-                                        info!("Auto-switched to profile index {} for {}", target_index, process_name);
-                                        
-                                        // Notify frontend
-                                        let _ = handle.emit_all("profile-changed", ProfileChangedPayload { index: target_index });
                                     }
+                                    info!(
+                                        "Auto-switched to profile index {} for {}",
+                                        target_index, process_name
+                                    );
+
+                                    // Notify frontend
+                                    let _ = handle.emit_all(
+                                        "profile-changed",
+                                        ProfileChangedPayload {
+                                            index: target_index,
+                                        },
+                                    );
                                 }
                             }
                         }

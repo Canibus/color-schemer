@@ -1,9 +1,16 @@
-use color_schemer::nvidia::{NvError, NVAPI_NVIDIA_DEVICE_NOT_FOUND, NVAPI_INVALID_HANDLE, NVAPI_NOT_SUPPORTED, NVAPI_API_NOT_INITIALIZED, NVAPI_LIBRARY_NOT_FOUND, NVAPI_INVALID_ARGUMENT, NVAPI_INVALID_USER_PRIVILEGE, NVAPI_DATA_NOT_FOUND, NVAPI_ACCESS_DENIED};
+use color_schemer::nvidia::{
+    NVAPI_ACCESS_DENIED, NVAPI_API_NOT_INITIALIZED, NVAPI_DATA_NOT_FOUND, NVAPI_INVALID_ARGUMENT,
+    NVAPI_INVALID_HANDLE, NVAPI_INVALID_USER_PRIVILEGE, NVAPI_LIBRARY_NOT_FOUND,
+    NVAPI_NOT_SUPPORTED, NVAPI_NVIDIA_DEVICE_NOT_FOUND, NvError,
+};
 
 #[test]
 fn test_nv_error_display() {
     let err = NvError::Status(NVAPI_NVIDIA_DEVICE_NOT_FOUND);
-    assert_eq!(format!("{}", err), "NVAPI Error (-6): NVIDIA device not found");
+    assert_eq!(
+        format!("{}", err),
+        "NVAPI Error (-6): NVIDIA device not found"
+    );
 
     let err = NvError::Status(NVAPI_INVALID_HANDLE);
     assert_eq!(format!("{}", err), "NVAPI Error (-8): Invalid handle");
@@ -12,16 +19,25 @@ fn test_nv_error_display() {
     assert_eq!(format!("{}", err), "NVAPI Error (-148): Not supported");
 
     let err = NvError::Status(NVAPI_API_NOT_INITIALIZED);
-    assert_eq!(format!("{}", err), "NVAPI Error (-4): NVAPI not initialized");
+    assert_eq!(
+        format!("{}", err),
+        "NVAPI Error (-4): NVAPI not initialized"
+    );
 
     let err = NvError::Status(NVAPI_LIBRARY_NOT_FOUND);
-    assert_eq!(format!("{}", err), "NVAPI Error (-2): NVAPI library not found");
+    assert_eq!(
+        format!("{}", err),
+        "NVAPI Error (-2): NVAPI library not found"
+    );
 
     let err = NvError::Status(NVAPI_INVALID_ARGUMENT);
     assert_eq!(format!("{}", err), "NVAPI Error (-5): Invalid argument");
 
     let err = NvError::Status(NVAPI_INVALID_USER_PRIVILEGE);
-    assert_eq!(format!("{}", err), "NVAPI Error (-111): Invalid user privilege");
+    assert_eq!(
+        format!("{}", err),
+        "NVAPI Error (-111): Invalid user privilege"
+    );
 
     let err = NvError::Status(NVAPI_DATA_NOT_FOUND);
     assert_eq!(format!("{}", err), "NVAPI Error (-133): Data not found");

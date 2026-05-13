@@ -27,8 +27,7 @@ impl TrayController {
                 .map_err(|e| format!("Menu error: {}", e))?;
         }
 
-        let next_item =
-            MenuItem::with_id(MENU_NEXT, "Next Profile (Ctrl+Shift+F5)", true, None);
+        let next_item = MenuItem::with_id(MENU_NEXT, "Next Profile (Ctrl+Shift+F5)", true, None);
         let prev_item =
             MenuItem::with_id(MENU_PREV, "Previous Profile (Ctrl+Shift+F6)", true, None);
         let reset_item = MenuItem::with_id(MENU_RESET, "Reset (Ctrl+Shift+F7)", true, None);
