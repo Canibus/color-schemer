@@ -1,7 +1,7 @@
 <!-- src/lib/ProfileList.svelte -->
 <script lang="ts">
   import type { DisplayProfile } from "./types";
-  import { i18n } from "./i18n.svelte";
+  import { i18n } from "../i18n";
   
   let { 
     profiles = [], 

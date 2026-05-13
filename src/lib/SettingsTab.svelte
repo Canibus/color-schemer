@@ -2,7 +2,7 @@
 <script lang="ts">
   import { invoke } from "@tauri-apps/api/tauri";
   import type { AppConfig, HotkeyConfig, GpuInfo } from "./types";
-  import { i18n } from "./i18n.svelte";
+  import { i18n } from "../i18n";
   import { untrack } from "svelte";
   
   let { 
