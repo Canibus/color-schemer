@@ -20,6 +20,11 @@
 - **Hardware:** NVIDIA GPU (required for Digital Vibrance and optimal performance).
 - **Drivers:** NVIDIA Game Ready or Studio Drivers installed.
 
+## 👀 Preview
+<img width="260" height="340" alt="color-schemer_UJoIxaqZuX" src="https://github.com/user-attachments/assets/c02ac035-9b98-4d54-b7c6-5d5ac750a876" />
+<img width="260" height="340" alt="color-schemer_dVlCEZnq0f" src="https://github.com/user-attachments/assets/3168d9bc-4cd2-4f6c-a2fc-55636f4a7279" />
+
+
 ## 🚀 Getting Started
 
 1. **Download:** Grab the latest `.msi` or `.exe` from the [Releases](https://github.com/yourusername/color-schemer/releases) page.
