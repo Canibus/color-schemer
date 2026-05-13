@@ -9,7 +9,7 @@
   import ProfileList from "./lib/ProfileList.svelte";
   import ProfileEditor from "./lib/ProfileEditor.svelte";
   import SettingsTab from "./lib/SettingsTab.svelte";
-  import { i18n } from "./i18n";
+  import { i18n } from "./i18n/index.svelte";
 
   let profiles = $state<DisplayProfile[]>([]);
   let activeIndex = $state<number | null>(null);
