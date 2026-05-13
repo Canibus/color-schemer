@@ -51,6 +51,14 @@
     "systemTray": {
       "iconPath": "icons/icon.png",
       "iconAsTemplate": true
+    },
+    "updater": {
+      "active": true,
+      "endpoints": [
+        "https://raw.githubusercontent.com/canibus/color-schemer/gh-pages/update.json"
+      ],
+      "dialog": true,
+      "pubkey": "RWTRxB9l3KEbZXmoSoElG7NM9sIRG3iCXaXE2SzRBCm+ZN0QsuAJ6HW"
     }
   }
 }
