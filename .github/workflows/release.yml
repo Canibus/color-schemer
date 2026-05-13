@@ -20,18 +20,42 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: lts/*
+      - name: setup bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
       - name: setup rust
         uses: dtolnay/rust-toolchain@stable
       - name: install frontend dependencies
         run: bun install
       - uses: tauri-apps/tauri-action@v0
+        id: tauri_build
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
         with:
-          tagName: app-v__VERSION__
-          releaseName: "App v__VERSION__"
+          tagName: v__VERSION__
+          releaseName: "Color Schemer v__VERSION__"
           releaseBody: "See the assets below to download the latest version."
           releaseDraft: true
           prerelease: false
+
+      - name: update metadata
+        run: node scripts/update-metadata.cjs
+        env:
+          VERSION: ${{ steps.tauri_build.outputs.appVersion }}
+
+      - name: prepare metadata deployment
+        run: |
+          mkdir dist-metadata
+          cp update.json dist-metadata/
+
+      - name: deploy update metadata
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist-metadata
+          publish_branch: gh-pages
+          user_name: 'github-actions[bot]'
+          user_email: 'github-actions[bot]@users.noreply.github.com'
