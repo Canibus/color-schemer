@@ -45,3 +45,9 @@ Color Schemer is a Windows-based utility designed to manage and switch between d
 - **Rust:** Adhere to 2024 edition idioms. Use `log` for diagnostic output.
 - **Frontend:** Svelte 5 components with TypeScript.
 - **Style:** Prefer explicit composition over complex inheritance.
+
+## Code Style
+**Rust:**
+- Run `cargo fmt` and `cargo clippy` before committing
+- Handle errors explicitly (avoid unwrap in production)
+- Use descriptive names, add doc comments for public APIs

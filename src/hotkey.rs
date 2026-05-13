@@ -36,12 +36,15 @@ impl HotkeyController {
             let hk = parse_hotkey(input).map_err(|e| format!("{}: {}", label, e))?;
             let id = hk.id();
             if registered_ids.contains(&id) {
-                info!("Hotkey '{}' is already registered, skipping duplicate for '{}'", input, label);
+                info!(
+                    "Hotkey '{}' is already registered, skipping duplicate for '{}'",
+                    input, label
+                );
                 return Ok(Some(id));
             }
-            manager.register(hk).map_err(|e| {
-                format!("Failed to register '{}' for '{}': {}", input, label, e)
-            })?;
+            manager
+                .register(hk)
+                .map_err(|e| format!("Failed to register '{}' for '{}': {}", input, label, e))?;
             registered_ids.insert(id);
             Ok(Some(id))
         };
@@ -107,7 +110,10 @@ fn parse_hotkey(input: &str) -> Result<HotKey, String> {
         } else if part.eq_ignore_ascii_case("alt") {
             mods |= Modifiers::ALT;
             continue;
-        } else if part.eq_ignore_ascii_case("win") || part.eq_ignore_ascii_case("meta") || part.eq_ignore_ascii_case("super") {
+        } else if part.eq_ignore_ascii_case("win")
+            || part.eq_ignore_ascii_case("meta")
+            || part.eq_ignore_ascii_case("super")
+        {
             // On Windows this maps to the Win/Super key.
             mods |= Modifiers::META;
             continue;
@@ -139,36 +145,38 @@ fn parse_code(token: &str) -> Option<Code> {
         return None;
     }
 
-    if let Some(rest) = t.strip_prefix('f').or_else(|| t.strip_prefix('F')) {
-        if let Ok(n) = rest.parse::<u8>() {
-            return match n {
-                1 => Some(Code::F1),
-                2 => Some(Code::F2),
-                3 => Some(Code::F3),
-                4 => Some(Code::F4),
-                5 => Some(Code::F5),
-                6 => Some(Code::F6),
-                7 => Some(Code::F7),
-                8 => Some(Code::F8),
-                9 => Some(Code::F9),
-                10 => Some(Code::F10),
-                11 => Some(Code::F11),
-                12 => Some(Code::F12),
-                13 => Some(Code::F13),
-                14 => Some(Code::F14),
-                15 => Some(Code::F15),
-                16 => Some(Code::F16),
-                17 => Some(Code::F17),
-                18 => Some(Code::F18),
-                19 => Some(Code::F19),
-                20 => Some(Code::F20),
-                21 => Some(Code::F21),
-                22 => Some(Code::F22),
-                23 => Some(Code::F23),
-                24 => Some(Code::F24),
-                _ => None,
-            };
-        }
+    if let Some(n) = t
+        .strip_prefix('f')
+        .or_else(|| t.strip_prefix('F'))
+        .and_then(|rest| rest.parse::<u8>().ok())
+    {
+        return match n {
+            1 => Some(Code::F1),
+            2 => Some(Code::F2),
+            3 => Some(Code::F3),
+            4 => Some(Code::F4),
+            5 => Some(Code::F5),
+            6 => Some(Code::F6),
+            7 => Some(Code::F7),
+            8 => Some(Code::F8),
+            9 => Some(Code::F9),
+            10 => Some(Code::F10),
+            11 => Some(Code::F11),
+            12 => Some(Code::F12),
+            13 => Some(Code::F13),
+            14 => Some(Code::F14),
+            15 => Some(Code::F15),
+            16 => Some(Code::F16),
+            17 => Some(Code::F17),
+            18 => Some(Code::F18),
+            19 => Some(Code::F19),
+            20 => Some(Code::F20),
+            21 => Some(Code::F21),
+            22 => Some(Code::F22),
+            23 => Some(Code::F23),
+            24 => Some(Code::F24),
+            _ => None,
+        };
     }
 
     if t.len() == 1 {
@@ -224,8 +232,7 @@ mod tests {
     #[test]
     fn parses_default_hotkey() {
         let hk = parse_hotkey("Ctrl+Shift+F5").unwrap();
-        let expected =
-            HotKey::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::F5);
+        let expected = HotKey::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::F5);
         assert_eq!(hk.id(), expected.id());
     }
 
@@ -252,10 +259,10 @@ mod tests {
             prev_profile: "Ctrl+A".to_string(), // Duplicate
             reset: "Ctrl+R".to_string(),
         };
-        
+
         let controller = HotkeyController::new(&config).expect("Should succeed now");
         assert_eq!(controller.next_id, controller.prev_id);
-        
+
         // Verify action mapping (should return the first match)
         let action = controller.get_action(controller.next_id).unwrap();
         assert_eq!(action, HotkeyAction::NextProfile);

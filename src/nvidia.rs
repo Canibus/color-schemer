@@ -203,7 +203,11 @@ pub struct GpuInfo {
 
 pub trait GpuController: Send + Sync {
     fn get_displays(&self) -> NvResult<Vec<DisplayInfo>>;
-    fn apply_display_settings(&self, display_id: Option<&str>, settings: &DisplaySettings) -> NvResult<()>;
+    fn apply_display_settings(
+        &self,
+        display_id: Option<&str>,
+        settings: &DisplaySettings,
+    ) -> NvResult<()>;
     fn set_digital_vibrance(&self, display_handle: usize, level: i32) -> NvResult<()>;
     fn get_digital_vibrance(&self, display_handle: usize) -> NvResult<NV_DISPLAY_DVC_INFO>;
     fn reset(&self, display_id: Option<&str>) -> NvResult<()>;
@@ -227,9 +231,9 @@ pub fn compute_gamma_ramp(settings: &DisplaySettings) -> [[u16; 256]; 3] {
         let clamped = bright.clamp(0.0, 1.0);
         let value = (clamped * 65535.0) as u16;
 
-        ramp[0][i] = value; // Red
-        ramp[1][i] = value; // Green
-        ramp[2][i] = value; // Blue
+        for row in &mut ramp {
+            row[i] = value;
+        }
     }
 
     ramp
@@ -265,7 +269,6 @@ impl NvidiaController {
 
         info!("Loading NVAPI...");
 
-
         let lib_name = if cfg!(target_arch = "x86_64") {
             "nvapi64.dll"
         } else {
@@ -298,7 +301,10 @@ impl NvidiaController {
             fn_unload: Self::get_func_ptr(query_interface, NVAPI_UNLOAD)?,
             fn_set_dvc_level: Self::get_func_ptr(query_interface, NVAPI_SET_DVC_LEVEL)?,
             fn_get_dvc_info: Self::get_func_ptr(query_interface, NVAPI_GET_DVC_INFO)?,
-            fn_get_associated_handle: Self::get_func_ptr(query_interface, NVAPI_GET_ASSOCIATED_NVIDIA_DISPLAY_HANDLE)?,
+            fn_get_associated_handle: Self::get_func_ptr(
+                query_interface,
+                NVAPI_GET_ASSOCIATED_NVIDIA_DISPLAY_HANDLE,
+            )?,
             fn_enum_display: Self::get_func_ptr(query_interface, NVAPI_ENUM_NVIDIA_DISPLAY_HANDLE)?,
         };
 
@@ -324,10 +330,13 @@ impl NvidiaController {
     }
 
     fn get_nv_handle(&self, display_id: &str) -> NvResult<usize> {
-        if let Ok(cache) = self.handle_cache.lock() {
-            if let Some(&handle) = cache.get(display_id) {
-                return Ok(handle);
-            }
+        if let Some(handle) = self
+            .handle_cache
+            .lock()
+            .ok()
+            .and_then(|cache| cache.get(display_id).copied())
+        {
+            return Ok(handle);
         }
 
         let mut handle: usize = 0;
@@ -359,7 +368,7 @@ impl GpuController for NvidiaController {
 
         for m in monitors {
             // Check if it's an NVIDIA display by trying to get its handle
-            if let Ok(_) = self.get_nv_handle(&m.device_id) {
+            if self.get_nv_handle(&m.device_id).is_ok() {
                 displays.push(DisplayInfo {
                     id: m.device_id,
                     name: m.friendly_name,
@@ -371,9 +380,13 @@ impl GpuController for NvidiaController {
         Ok(displays)
     }
 
-    fn apply_display_settings(&self, display_id: Option<&str>, settings: &DisplaySettings) -> NvResult<()> {
+    fn apply_display_settings(
+        &self,
+        display_id: Option<&str>,
+        settings: &DisplaySettings,
+    ) -> NvResult<()> {
         let validated = settings.validated();
-        
+
         if let Some(id) = display_id {
             let handle = self.get_nv_handle(id)?;
             self.set_digital_vibrance(handle, validated.digital_vibrance)?;
@@ -383,7 +396,7 @@ impl GpuController for NvidiaController {
             let mut i = 0;
             let mut handle: usize = 0;
             while unsafe { (self.fn_enum_display)(i, &mut handle) } == NVAPI_OK {
-                // Note: enum_display doesn't give us the WinAPI name easily, 
+                // Note: enum_display doesn't give us the WinAPI name easily,
                 // but we can apply vibrance by handle.
                 // For gamma ramp, if we don't have the name, we apply to default DC (all? or primary?).
                 // Better to use get_displays and loop.
@@ -393,7 +406,7 @@ impl GpuController for NvidiaController {
             // Apply gamma ramp to default (usually primary or all depending on OS/driver)
             Self::set_gamma_ramp(&validated, None)?;
         }
-        
+
         info!("Settings applied for {:?}: {:?}", display_id, validated);
         Ok(())
     }
@@ -403,7 +416,10 @@ impl GpuController for NvidiaController {
         if status != NVAPI_OK {
             return Err(NvError::Status(status));
         }
-        info!("Digital Vibrance set for handle 0x{:X}: {}", display_handle, level);
+        info!(
+            "Digital Vibrance set for handle 0x{:X}: {}",
+            display_handle, level
+        );
         Ok(())
     }
 

@@ -1,4 +1,6 @@
-use crate::nvidia::{DisplaySettings, GpuController, NvError, NvResult, NV_DISPLAY_DVC_INFO, GpuInfo};
+use crate::nvidia::{
+    DisplaySettings, GpuController, GpuInfo, NV_DISPLAY_DVC_INFO, NvError, NvResult,
+};
 use std::sync::Mutex;
 
 #[derive(Debug, Clone)]
@@ -17,11 +19,7 @@ pub struct MockGpuController {
 
 impl MockGpuController {
     pub fn new() -> Self {
-        Self {
-            calls: Mutex::new(Vec::new()),
-            should_fail: Mutex::new(false),
-            vibrance_level: Mutex::new(0),
-        }
+        Self::default()
     }
 
     pub fn set_should_fail(&self, fail: bool) {
@@ -48,6 +46,16 @@ impl MockGpuController {
     }
 }
 
+impl Default for MockGpuController {
+    fn default() -> Self {
+        Self {
+            calls: Mutex::new(Vec::new()),
+            should_fail: Mutex::new(false),
+            vibrance_level: Mutex::new(0),
+        }
+    }
+}
+
 impl GpuController for MockGpuController {
     fn get_info(&self) -> GpuInfo {
         GpuInfo {
@@ -64,11 +72,15 @@ impl GpuController for MockGpuController {
         }])
     }
 
-    fn apply_display_settings(&self, display_id: Option<&str>, settings: &DisplaySettings) -> NvResult<()> {
-        self.calls
-            .lock()
-            .unwrap()
-            .push(GpuCall::ApplySettings(display_id.map(|s| s.to_string()), settings.clone()));
+    fn apply_display_settings(
+        &self,
+        display_id: Option<&str>,
+        settings: &DisplaySettings,
+    ) -> NvResult<()> {
+        self.calls.lock().unwrap().push(GpuCall::ApplySettings(
+            display_id.map(|s| s.to_string()),
+            settings.clone(),
+        ));
         if *self.should_fail.lock().unwrap() {
             Err(NvError::Os("Mock apply failed".to_string()))
         } else {
@@ -77,7 +89,10 @@ impl GpuController for MockGpuController {
     }
 
     fn set_digital_vibrance(&self, display_handle: usize, level: i32) -> NvResult<()> {
-        self.calls.lock().unwrap().push(GpuCall::SetVibrance(display_handle, level));
+        self.calls
+            .lock()
+            .unwrap()
+            .push(GpuCall::SetVibrance(display_handle, level));
         if *self.should_fail.lock().unwrap() {
             Err(NvError::Os("Mock vibrance failed".to_string()))
         } else {
@@ -87,7 +102,10 @@ impl GpuController for MockGpuController {
     }
 
     fn get_digital_vibrance(&self, display_handle: usize) -> NvResult<NV_DISPLAY_DVC_INFO> {
-        self.calls.lock().unwrap().push(GpuCall::GetVibrance(display_handle));
+        self.calls
+            .lock()
+            .unwrap()
+            .push(GpuCall::GetVibrance(display_handle));
         Ok(NV_DISPLAY_DVC_INFO {
             current_level: *self.vibrance_level.lock().unwrap(),
             min_level: -1024,
@@ -98,7 +116,10 @@ impl GpuController for MockGpuController {
     }
 
     fn reset(&self, display_id: Option<&str>) -> NvResult<()> {
-        self.calls.lock().unwrap().push(GpuCall::Reset(display_id.map(|s| s.to_string())));
+        self.calls
+            .lock()
+            .unwrap()
+            .push(GpuCall::Reset(display_id.map(|s| s.to_string())));
         *self.vibrance_level.lock().unwrap() = 0;
         Ok(())
     }

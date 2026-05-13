@@ -286,11 +286,7 @@ fn test_profile_serialization() {
 
 #[test]
 fn test_profile_applications() {
-    let mut profile = DisplayProfile::new(
-        "Gaming",
-        "Gaming settings",
-        DisplaySettings::default(),
-    );
+    let mut profile = DisplayProfile::new("Gaming", "Gaming settings", DisplaySettings::default());
     profile.applications.push("Notepad.exe".to_string());
 
     assert_eq!(profile.applications.len(), 1);
@@ -298,7 +294,7 @@ fn test_profile_applications() {
 
     let json = serde_json::to_string(&profile).unwrap();
     assert!(json.contains("\"applications\":[\"Notepad.exe\"]"));
-    
+
     let restored: DisplayProfile = serde_json::from_str(&json).unwrap();
     assert_eq!(restored.applications.len(), 1);
     assert_eq!(restored.applications[0], "Notepad.exe");
@@ -324,7 +320,7 @@ fn test_profile_description_truncation() {
 fn test_profile_sanitize_utf8() {
     let mut profile = DisplayProfile::new("name", "desc", DisplaySettings::default());
     // 33 Cyrillic characters
-    profile.name = "Ф".repeat(33); 
+    profile.name = "Ф".repeat(33);
     profile.sanitize();
     assert_eq!(profile.name.chars().count(), 32);
 }

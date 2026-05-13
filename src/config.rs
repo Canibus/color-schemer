@@ -69,7 +69,11 @@ impl Default for AppConfig {
         };
 
         let profiles = vec![
-            DisplayProfile::new(first_profile_name, "Standard settings", DisplaySettings::default()),
+            DisplayProfile::new(
+                first_profile_name,
+                "Standard settings",
+                DisplaySettings::default(),
+            ),
             DisplayProfile::new(
                 "Gaming",
                 "Gaming profile",
@@ -105,17 +109,18 @@ impl Default for AppConfig {
 impl AppConfig {
     pub fn config_path() -> PathBuf {
         // 1. Try to find config next to .exe (portable mode)
-        if let Ok(exe_path) = std::env::current_exe() {
-            if let Some(exe_dir) = exe_path.parent() {
-                let portable_config = exe_dir.join("config.toml");
-                if portable_config.exists() {
-                    return portable_config;
-                }
-            }
+        if let Some(portable_config) = std::env::current_exe()
+            .ok()
+            .and_then(|p| p.parent().map(|d| d.join("config.toml")))
+            .filter(|p| p.exists())
+        {
+            return portable_config;
         }
 
         // 2. Otherwise use standard AppData folder for installed application
-        if let Some(proj_dirs) = directories::ProjectDirs::from("io.github.canibus", "canibus", "ColorSchemer") {
+        if let Some(proj_dirs) =
+            directories::ProjectDirs::from("io.github.canibus", "canibus", "ColorSchemer")
+        {
             proj_dirs.config_dir().join("config.toml")
         } else {
             // Fallback to current directory
@@ -136,7 +141,10 @@ impl AppConfig {
                     config
                 }
                 Err(e) => {
-                    warn!("Parse error: {}. Backing up corrupted config and using defaults.", e);
+                    warn!(
+                        "Parse error: {}. Backing up corrupted config and using defaults.",
+                        e
+                    );
                     if let Err(err) = fs::rename(path, path.with_extension("toml.bak")) {
                         warn!("Failed to back up corrupted config: {}", err);
                     }
