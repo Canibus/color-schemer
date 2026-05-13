@@ -1,7 +1,7 @@
 <!-- src/lib/ProfileEditor.svelte -->
 <script lang="ts">
   import type { DisplayInfo, DisplayProfile, DisplaySettings, ProcessInfo } from "./types";
-  import { i18n } from "./i18n.svelte";
+  import { i18n } from "../i18n/index.svelte";
   import { invoke } from "@tauri-apps/api/tauri";
   import { untrack } from "svelte";
   
