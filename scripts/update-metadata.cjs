@@ -15,14 +15,47 @@ function main() {
         console.log(`Generating metadata for ${productName} v${version}`);
 
         // Find signature file
-        // Pattern: {productName}_{version}_x64_en-US.msi.zip.sig
-        const sigFileName = `${productName}_${version}_x64_en-US.msi.zip.sig`;
-        const sigFilePath = path.join(BUNDLE_DIR, sigFileName);
-
         let signature = process.env.SIGNATURE;
-        if (!signature && fs.existsSync(sigFilePath)) {
-            console.log(`Reading signature from ${sigFilePath}`);
-            signature = fs.readFileSync(sigFilePath, 'utf8').trim();
+        
+        if (!signature) {
+            const bundlePaths = [
+                path.join('src-tauri/target/release/bundle/msi', `${productName}_${version}_x64_en-US.msi.zip.sig`),
+                path.join('src-tauri/target/release/bundle/nsis', `${productName}_${version}_x64-setup.exe.sig`)
+            ];
+
+            for (const sigFilePath of bundlePaths) {
+                if (fs.existsSync(sigFilePath)) {
+                    console.log(`Reading signature from ${sigFilePath}`);
+                    signature = fs.readFileSync(sigFilePath, 'utf8').trim();
+                    break;
+                }
+            }
+        }
+        
+        // Fallback: search for any .sig file in the bundle directory if standard paths fail
+        if (!signature) {
+            const baseBundleDir = 'src-tauri/target/release/bundle';
+            if (fs.existsSync(baseBundleDir)) {
+                const findSig = (dir) => {
+                    const files = fs.readdirSync(dir);
+                    for (const file of files) {
+                        const fullPath = path.join(dir, file);
+                        if (fs.statSync(fullPath).isDirectory()) {
+                            const found = findSig(fullPath);
+                            if (found) return found;
+                        } else if (file.endsWith('.sig')) {
+                            return fullPath;
+                        }
+                    }
+                    return null;
+                };
+                
+                const foundSigFile = findSig(baseBundleDir);
+                if (foundSigFile) {
+                    console.log(`Found fallback signature at ${foundSigFile}`);
+                    signature = fs.readFileSync(foundSigFile, 'utf8').trim();
+                }
+            }
         }
 
         if (!signature) {
