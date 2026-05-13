@@ -85,15 +85,24 @@ mod tests {
         let mut manager = AutoSwitchManager::new(0);
 
         // Focus on game
-        assert_eq!(manager.evaluate_focus_change("game.exe", &profiles), Some(1));
+        assert_eq!(
+            manager.evaluate_focus_change("game.exe", &profiles),
+            Some(1)
+        );
         assert_eq!(manager.active_auto_index, Some(1));
 
         // Focus on something else -> revert to default (manual)
-        assert_eq!(manager.evaluate_focus_change("notepad.exe", &profiles), Some(0));
+        assert_eq!(
+            manager.evaluate_focus_change("notepad.exe", &profiles),
+            Some(0)
+        );
         assert_eq!(manager.active_auto_index, None);
 
         // Focus on browser (case insensitive)
-        assert_eq!(manager.evaluate_focus_change("CHROME.EXE", &profiles), Some(2));
+        assert_eq!(
+            manager.evaluate_focus_change("CHROME.EXE", &profiles),
+            Some(2)
+        );
         assert_eq!(manager.active_auto_index, Some(2));
 
         // Same process again -> no change
@@ -120,9 +129,15 @@ mod tests {
         // It's already at manual_index 0, and matched_index is None.
         // active_auto_index was None, and will remain None.
         // matched_index (None) == active_auto_index (None), so it returns None.
-        assert_eq!(manager.evaluate_focus_change("explorer.exe", &profiles), None);
+        assert_eq!(
+            manager.evaluate_focus_change("explorer.exe", &profiles),
+            None
+        );
 
         // Changing focus back to game
-        assert_eq!(manager.evaluate_focus_change("game.exe", &profiles), Some(1));
+        assert_eq!(
+            manager.evaluate_focus_change("game.exe", &profiles),
+            Some(1)
+        );
     }
 }

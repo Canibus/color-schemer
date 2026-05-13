@@ -258,21 +258,18 @@ fn main() {
         platform::windows::pump_messages();
 
         // 2. Handle auto-switching
-        if FOREGROUND_CHANGED.swap(false, Ordering::SeqCst) {
-            if let Some(process_name) = platform::windows::get_foreground_process_name() {
-                let mut asm = lock_auto_switch_manager(&auto_switch_manager);
-                let pm = lock_profile_manager(&profile_manager);
+        if let Some(process_name) = FOREGROUND_CHANGED
+            .swap(false, Ordering::SeqCst)
+            .then(platform::windows::get_foreground_process_name)
+            .flatten()
+        {
+            let mut asm = lock_auto_switch_manager(&auto_switch_manager);
+            let pm = lock_profile_manager(&profile_manager);
 
-                if let Some(target_index) = asm.evaluate_focus_change(&process_name, pm.profiles()) {
-                    drop(pm);
-                    drop(asm);
-                    apply_profile_internal(
-                        target_index,
-                        &nvidia,
-                        &profile_manager,
-                        true,
-                    );
-                }
+            if let Some(target_index) = asm.evaluate_focus_change(&process_name, pm.profiles()) {
+                drop(pm);
+                drop(asm);
+                apply_profile_internal(target_index, &nvidia, &profile_manager, true);
             }
         }
 
@@ -280,15 +277,11 @@ fn main() {
         while let Ok(event) = GlobalHotKeyEvent::receiver().try_recv() {
             let now = Instant::now();
 
-            if event.state() == HotKeyState::Pressed && now.duration_since(last_trigger) > cooldown {
+            if event.state() == HotKeyState::Pressed && now.duration_since(last_trigger) > cooldown
+            {
                 last_trigger = now;
                 if let Some(action) = hotkey_controller.get_action(event.id()) {
-                    handle_action(
-                        action,
-                        &nvidia,
-                        &profile_manager,
-                        &auto_switch_manager,
-                    );
+                    handle_action(action, &nvidia, &profile_manager, &auto_switch_manager);
                 }
             }
         }
@@ -297,12 +290,7 @@ fn main() {
         let mut should_quit = false;
         while let Ok(event) = MenuEvent::receiver().try_recv() {
             let id = event.id().0.as_str();
-            if handle_menu_event(
-                id,
-                &nvidia,
-                &profile_manager,
-                &auto_switch_manager,
-            ) {
+            if handle_menu_event(id, &nvidia, &profile_manager, &auto_switch_manager) {
                 should_quit = true;
                 break;
             }
@@ -316,7 +304,9 @@ fn main() {
     }
 
     if !hook.is_null() {
-        platform::windows::unhook_event_hook(hook);
+        unsafe {
+            platform::windows::unhook_event_hook(hook);
+        }
     }
 
     info!("Application finished");

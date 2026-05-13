@@ -1,7 +1,7 @@
 #[cfg(windows)]
 pub mod windows {
-    use std::ffi::c_void;
     use log::info;
+    use std::ffi::c_void;
 
     // ==========================
     // WinAPI: message pump
@@ -64,13 +64,26 @@ pub mod windows {
 
     #[link(name = "kernel32")]
     unsafe extern "system" {
-        fn OpenProcess(dw_desired_access: u32, b_inherit_handle: i32, dw_process_id: u32) -> *mut c_void;
+        fn OpenProcess(
+            dw_desired_access: u32,
+            b_inherit_handle: i32,
+            dw_process_id: u32,
+        ) -> *mut c_void;
         fn CloseHandle(h_object: *mut c_void) -> i32;
-        fn QueryFullProcessImageNameW(h_process: *mut c_void, dw_flags: u32, lp_exe_name: *mut u16, lpdw_size: *mut u32) -> i32;
+        fn QueryFullProcessImageNameW(
+            h_process: *mut c_void,
+            dw_flags: u32,
+            lp_exe_name: *mut u16,
+            lpdw_size: *mut u32,
+        ) -> i32;
         fn CreateToolhelp32Snapshot(dw_flags: u32, th32_process_id: u32) -> *mut c_void;
         fn Process32FirstW(h_snapshot: *mut c_void, lppe: *mut PROCESSENTRY32W) -> i32;
         fn Process32NextW(h_snapshot: *mut c_void, lppe: *mut PROCESSENTRY32W) -> i32;
-        fn CreateMutexW(lp_mutex_attributes: *mut c_void, b_initial_owner: i32, lp_name: *const u16) -> *mut c_void;
+        fn CreateMutexW(
+            lp_mutex_attributes: *mut c_void,
+            b_initial_owner: i32,
+            lp_name: *const u16,
+        ) -> *mut c_void;
         fn GetLastError() -> u32;
     }
 
@@ -83,7 +96,7 @@ pub mod windows {
     impl SingleInstance {
         pub fn new(name: &str) -> Option<Self> {
             unsafe {
-                // Ensure name has a prefix if it doesn't already. 
+                // Ensure name has a prefix if it doesn't already.
                 // Using 'Local\' is safer for per-user apps as it doesn't require SeCreateGlobalPrivilege.
                 let full_name = if name.starts_with("Global\\") || name.starts_with("Local\\") {
                     name.to_string()
@@ -91,7 +104,8 @@ pub mod windows {
                     format!("Local\\{}", name)
                 };
 
-                let name_u16: Vec<u16> = full_name.encode_utf16().chain(std::iter::once(0)).collect();
+                let name_u16: Vec<u16> =
+                    full_name.encode_utf16().chain(std::iter::once(0)).collect();
                 let handle = CreateMutexW(std::ptr::null_mut(), 1, name_u16.as_ptr());
                 if handle.is_null() {
                     return None;
@@ -240,12 +254,12 @@ pub mod windows {
             // We want windows that are visible
             if unsafe { IsWindowVisible(hwnd) } != 0 {
                 let owner = unsafe { GetWindow(hwnd, GW_OWNER) };
-                
-                // Usually we want top-level windows (no owner), 
+
+                // Usually we want top-level windows (no owner),
                 // but some games might have a dummy owner.
                 let mut process_id = 0;
                 unsafe { GetWindowThreadProcessId(hwnd, &mut process_id) };
-                
+
                 if let Some(name) = get_process_name_from_id(process_id) {
                     // Filter noise
                     if name.eq_ignore_ascii_case("explorer.exe")
@@ -266,10 +280,12 @@ pub mod windows {
                     };
 
                     // Only add if it's likely a "real" window (has a title OR no owner)
-                    if length > 0 || owner.is_null() {
-                        if !apps.iter().any(|a: &ProcessInfo| a.name == name && a.title == title) {
-                            apps.push(ProcessInfo { name, title });
-                        }
+                    if (length > 0 || owner.is_null())
+                        && !apps
+                            .iter()
+                            .any(|a: &ProcessInfo| a.name == name && a.title == title)
+                    {
+                        apps.push(ProcessInfo { name, title });
                     }
                 }
             }
@@ -281,7 +297,7 @@ pub mod windows {
         }
 
         // Sort by title
-        apps.sort_by(|a: &ProcessInfo, b: &ProcessInfo| a.title.to_lowercase().cmp(&b.title.to_lowercase()));
+        apps.sort_by_key(|a: &ProcessInfo| a.title.to_lowercase());
         apps
     }
 
@@ -328,7 +344,10 @@ pub mod windows {
     }
 
     /// Unhook a window event hook.
-    pub fn unhook_event_hook(hook: *mut c_void) {
+    ///
+    /// # Safety
+    /// The hook handle must be valid and must have been returned by `SetWinEventHook`.
+    pub unsafe fn unhook_event_hook(hook: *mut c_void) {
         unsafe {
             UnhookWinEvent(hook);
         }
@@ -416,8 +435,18 @@ pub mod windows {
             let monitors = unsafe { &mut *(dw_data as *mut Vec<MonitorData>) };
             let mut info = MONITORINFOEXW {
                 cbSize: std::mem::size_of::<MONITORINFOEXW>() as u32,
-                rcMonitor: RECT { left: 0, top: 0, right: 0, bottom: 0 },
-                rcWork: RECT { left: 0, top: 0, right: 0, bottom: 0 },
+                rcMonitor: RECT {
+                    left: 0,
+                    top: 0,
+                    right: 0,
+                    bottom: 0,
+                },
+                rcWork: RECT {
+                    left: 0,
+                    top: 0,
+                    right: 0,
+                    bottom: 0,
+                },
                 dwFlags: 0,
                 szDevice: [0u16; 32],
             };
@@ -426,7 +455,7 @@ pub mod windows {
                 let device_id = String::from_utf16_lossy(&info.szDevice)
                     .trim_matches('\0')
                     .to_string();
-                
+
                 let mut friendly_name = device_id.clone();
                 let mut device = DISPLAY_DEVICEW {
                     cb: std::mem::size_of::<DISPLAY_DEVICEW>() as u32,
@@ -467,7 +496,10 @@ pub mod windows {
         monitors
     }
 
-    pub fn set_device_gamma_ramp(ramp: &[[u16; 256]; 3], device_name: Option<&str>) -> Result<(), String> {
+    pub fn set_device_gamma_ramp(
+        ramp: &[[u16; 256]; 3],
+        device_name: Option<&str>,
+    ) -> Result<(), String> {
         unsafe {
             let hdc = if let Some(name) = device_name {
                 let name_u16: Vec<u16> = name.encode_utf16().chain(std::iter::once(0)).collect();
@@ -490,7 +522,7 @@ pub mod windows {
             };
 
             let ok = SetDeviceGammaRamp(hdc, ramp.as_ptr() as *const c_void);
-            
+
             if device_name.is_some() {
                 DeleteDC(hdc);
             } else {
@@ -510,15 +542,15 @@ pub mod windows {
     // ==========================
 
     pub fn update_auto_start(enabled: bool) -> Result<(), String> {
-        use winreg::enums::*;
         use winreg::RegKey;
+        use winreg::enums::*;
 
         let hkcu = RegKey::predef(HKEY_CURRENT_USER);
         let path = "Software\\Microsoft\\Windows\\CurrentVersion\\Run";
 
         if enabled {
             if cfg!(debug_assertions) {
-                // In debug mode, we usually don't want to register for auto-start 
+                // In debug mode, we usually don't want to register for auto-start
                 // because it might point to a transient build and cause issues at boot.
                 // We return Ok(()) here to avoid error popups during development.
                 info!("Auto-start registration skipped in debug mode.");
@@ -546,15 +578,15 @@ pub mod windows {
 
             key.set_value("color-schemer", &path_str)
                 .map_err(|e| format!("Failed to set registry value: {}", e))?;
-            
+
             info!("Auto-start registered: {}", path_str);
-        } else {
-            if let Ok(key) = hkcu.open_subkey_with_flags(path, KEY_WRITE) {
-                if key.get_value::<String, _>("color-schemer").is_ok() {
-                    let _ = key.delete_value("color-schemer");
-                    info!("Auto-start unregistered.");
-                }
-            }
+        } else if let Some(key) = hkcu
+            .open_subkey_with_flags(path, KEY_WRITE)
+            .ok()
+            .filter(|k| k.get_value::<String, _>("color-schemer").is_ok())
+        {
+            let _ = key.delete_value("color-schemer");
+            info!("Auto-start unregistered.");
         }
         Ok(())
     }
@@ -582,7 +614,10 @@ pub mod windows {
 
     pub fn wake_message_loop() {}
 
-    pub fn set_device_gamma_ramp(_ramp: &[[u16; 256]; 3], _device_name: Option<&str>) -> Result<(), String> {
+    pub fn set_device_gamma_ramp(
+        _ramp: &[[u16; 256]; 3],
+        _device_name: Option<&str>,
+    ) -> Result<(), String> {
         Err("Gamma ramp is only supported on Windows".to_string())
     }
 
