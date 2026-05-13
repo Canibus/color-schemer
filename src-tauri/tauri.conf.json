@@ -44,7 +44,7 @@
     },
     "bundle": {
       "active": true,
-      "targets": ["msi", "nsis"],
+      "targets": ["msi", "nsis", "updater"],
       "identifier": "io.github.canibus.colorschemer",
       "icon": ["icons/icon.ico", "icons/icon.png"]
     },
